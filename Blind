@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>盲人的世界</title>
+    <title>The World of the Blind</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background: #000;
             color: #666;
             min-height: 100vh;
@@ -35,16 +35,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-        }
-
-        /* 物体轮廓 - 使用遮罩只显示触摸圈内的部分 */
-        .outline {
-            fill: none;
-            stroke: rgba(220, 220, 220, 0.75);
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            filter: blur(0.5px);
         }
 
         /* 触摸圈 - 只保留中心点 */
@@ -70,110 +60,90 @@
             box-shadow: 0 0 8px rgba(200, 200, 200, 0.4);
         }
 
-        /* 感知文本 */
+        /* 感知文本 - 显示2-3个核心词 */
         .sensation {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             color: rgba(220, 220, 220, 0.9);
-            font-size: 1.1rem;
+            font-size: 1.3rem;
             text-align: center;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.4s;
-            max-width: 300px;
-            line-height: 1.8;
+            transition: opacity 0.2s;
+            max-width: 400px;
+            line-height: 2;
             text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
             z-index: 50;
+            font-weight: 300;
+            letter-spacing: 0.1em;
         }
 
         .sensation.visible {
             opacity: 1;
         }
 
-        /* 句子卡片 */
-        .sentence-card {
+        /* 句子区域（不可见，仅用于检测） */
+        .sentence-area {
             position: absolute;
-            padding: 20px 30px;
-            background: rgba(40, 40, 40, 0.8);
-            border: 2px solid rgba(120, 120, 120, 0.5);
-            border-radius: 8px;
-            color: rgba(220, 220, 220, 0.9);
-            font-size: 1.1rem;
-            cursor: grab;
-            transition: all 0.3s;
-            user-select: none;
-            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
         }
 
-        .sentence-card:hover {
-            border-color: rgba(180, 180, 180, 0.8);
-            background: rgba(50, 50, 50, 0.9);
-            transform: scale(1.05);
-        }
-
-        .sentence-card.dragging {
-            opacity: 0.7;
-            cursor: grabbing;
-            z-index: 1000;
-        }
-
-        .sentence-card.placed {
-            background: rgba(60, 80, 60, 0.8);
-            border-color: rgba(120, 180, 120, 0.7);
-        }
-
-        /* 排序区域 */
+        /* 排序区域 - 纵向 */
         .sort-area {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             display: flex;
-            gap: 15px;
+            flex-direction: column;
+            gap: 35px;
             z-index: 5;
         }
 
         .sort-slot {
-            width: 80px;
-            height: 120px;
-            border: 3px dashed rgba(120, 120, 120, 0.4);
-            border-radius: 8px;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            background: rgba(30, 30, 30, 0.6);
-            transition: all 0.3s;
+            gap: 20px;
             position: relative;
+            height: 40px;
         }
 
-        .sort-slot.highlight {
-            border-color: rgba(180, 180, 180, 0.8);
-            background: rgba(50, 50, 50, 0.8);
-            border-style: solid;
-        }
-
-        .sort-slot .slot-number {
-            font-size: 2.5rem;
+        .slot-number {
+            font-size: 1.2rem;
             color: rgba(120, 120, 120, 0.5);
-            font-weight: bold;
+            font-weight: 300;
+            width: 20px;
+            text-align: right;
         }
 
-        .sort-slot.filled .slot-number {
-            font-size: 1rem;
+        .slot-line {
+            width: 250px;
+            height: 1px;
+            background: rgba(100, 100, 100, 0.4);
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        .sort-slot.highlight .slot-line {
+            background: rgba(150, 150, 150, 0.7);
+            box-shadow: 0 0 8px rgba(150, 150, 150, 0.3);
+        }
+
+        .sort-slot.filled .slot-line {
+            background: rgba(120, 180, 120, 0.6);
+        }
+
+        .slot-content {
             position: absolute;
-            top: 10px;
-            color: rgba(150, 150, 150, 0.7);
-        }
-
-        .sort-slot .sentence-text {
-            font-size: 0.85rem;
-            color: rgba(220, 220, 220, 0.9);
-            text-align: center;
-            padding: 10px;
-            line-height: 1.4;
+            left: 0;
+            top: -20px;
+            font-size: 0.9rem;
+            color: rgba(220, 220, 220, 0.85);
+            white-space: nowrap;
+            pointer-events: none;
         }
 
         /* 提示文本 */
@@ -182,12 +152,13 @@
             top: 30px;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(180, 180, 180, 0.7);
-            font-size: 1rem;
+            color: rgba(180, 180, 180, 0.6);
+            font-size: 0.95rem;
             text-align: center;
             z-index: 50;
             max-width: 600px;
-            line-height: 1.6;
+            line-height: 1.8;
+            font-weight: 300;
         }
 
         /* 声音开关 */
@@ -211,6 +182,26 @@
             border-color: rgba(150, 150, 150, 0.5);
             color: rgba(180, 180, 180, 0.8);
             outline: none;
+        }
+
+        /* 拖拽指示器 */
+        .drag-indicator {
+            position: absolute;
+            padding: 12px 20px;
+            background: rgba(40, 40, 40, 0.85);
+            border: 1px solid rgba(120, 120, 120, 0.4);
+            border-radius: 6px;
+            color: rgba(220, 220, 220, 0.9);
+            font-size: 0.95rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1001;
+            font-weight: 300;
+        }
+
+        .drag-indicator.visible {
+            opacity: 1;
         }
 
         /* 结束画面 */
@@ -238,10 +229,11 @@
         .end-message {
             text-align: center;
             color: rgba(220, 220, 220, 0.9);
-            font-size: 1.5rem;
-            line-height: 2;
-            max-width: 500px;
+            font-size: 1.4rem;
+            line-height: 2.2;
+            max-width: 600px;
             padding: 40px;
+            font-weight: 300;
         }
 
         /* 屏幕阅读器 */
@@ -259,16 +251,17 @@
 
         @media (max-width: 768px) {
             .sort-area {
-                flex-wrap: wrap;
-                max-width: 90vw;
+                gap: 25px;
             }
-            .sort-slot {
-                width: 70px;
-                height: 100px;
+            .slot-line {
+                width: 200px;
             }
             .instruction {
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 padding: 0 20px;
+            }
+            .sensation {
+                font-size: 1.1rem;
             }
         }
 
@@ -282,48 +275,54 @@
 </head>
 <body>
     <!-- 场景 -->
-    <div class="scene" id="scene" role="application" aria-label="探索区域" tabindex="0">
+    <div class="scene" id="scene" role="application" aria-label="Exploration area" tabindex="0">
 
-        <!-- SVG 场景 - 显示句子轮廓 -->
+        <!-- SVG 场景 -->
         <svg class="scene-svg" id="sceneSvg">
-            <defs>
-                <!-- 圆形遮罩 - 只显示触摸圈内的内容 -->
-                <radialGradient id="touchGradient">
-                    <stop offset="0%" stop-color="white" stop-opacity="1"/>
-                    <stop offset="50%" stop-color="white" stop-opacity="0.7"/>
-                    <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
-                    <stop offset="100%" stop-color="white" stop-opacity="0"/>
-                </radialGradient>
-                <mask id="touchMask">
-                    <rect width="100%" height="100%" fill="black"/>
-                    <circle id="maskCircle" r="60" fill="url(#touchGradient)"/>
-                </mask>
-            </defs>
-
-            <!-- 句子轮廓层 -->
-            <g id="sentenceOutlines" mask="url(#touchMask)"></g>
+            <!-- 空的SVG，仅用于未来扩展 -->
         </svg>
 
         <!-- 触摸圈 -->
         <div class="touch-circle" id="touchCircle"></div>
 
-        <!-- 感知文本 -->
+        <!-- 感知文本 - 显示2-3个关键词 -->
         <div class="sensation" id="sensation" role="status" aria-live="polite"></div>
+
+        <!-- 拖拽指示器 -->
+        <div class="drag-indicator" id="dragIndicator"></div>
 
         <!-- 提示文本 -->
         <div class="instruction" id="instruction">
-            在黑暗中触摸散落的句子<br>
-            根据音调高低排序（音调越高，顺序越靠后）
+            Touch the darkness to discover hidden words<br>
+            Drag sentences to the lines by their musical pitch (higher pitch = later position)
         </div>
 
-        <!-- 排序区域 -->
+        <!-- 排序区域 - 纵向 -->
         <div class="sort-area" id="sortArea">
-            <div class="sort-slot" data-slot="1"><span class="slot-number">1</span></div>
-            <div class="sort-slot" data-slot="2"><span class="slot-number">2</span></div>
-            <div class="sort-slot" data-slot="3"><span class="slot-number">3</span></div>
-            <div class="sort-slot" data-slot="4"><span class="slot-number">4</span></div>
-            <div class="sort-slot" data-slot="5"><span class="slot-number">5</span></div>
-            <div class="sort-slot" data-slot="6"><span class="slot-number">6</span></div>
+            <div class="sort-slot" data-slot="1">
+                <span class="slot-number">1.</span>
+                <div class="slot-line"></div>
+            </div>
+            <div class="sort-slot" data-slot="2">
+                <span class="slot-number">2.</span>
+                <div class="slot-line"></div>
+            </div>
+            <div class="sort-slot" data-slot="3">
+                <span class="slot-number">3.</span>
+                <div class="slot-line"></div>
+            </div>
+            <div class="sort-slot" data-slot="4">
+                <span class="slot-number">4.</span>
+                <div class="slot-line"></div>
+            </div>
+            <div class="sort-slot" data-slot="5">
+                <span class="slot-number">5.</span>
+                <div class="slot-line"></div>
+            </div>
+            <div class="sort-slot" data-slot="6">
+                <span class="slot-number">6.</span>
+                <div class="slot-line"></div>
+            </div>
         </div>
 
         <!-- 结束画面 -->
@@ -333,7 +332,7 @@
     </div>
 
     <!-- 声音开关 -->
-    <button class="sound-toggle" id="soundToggle" aria-pressed="true">声音</button>
+    <button class="sound-toggle" id="soundToggle" aria-pressed="true">Sound</button>
 
     <!-- 屏幕阅读器 -->
     <div class="sr-only" role="status" aria-live="polite" id="liveRegion"></div>
@@ -341,12 +340,54 @@
     <script>
         // ============= 句子数据 =============
         const sentences = [
-            { id: 1, text: '我看不见光明', tone: 'do', freq: 261.63, order: 1 },
-            { id: 2, text: '只能依靠触摸', tone: 're', freq: 293.66, order: 2 },
-            { id: 3, text: '感受物体的形状', tone: 'mi', freq: 329.63, order: 3 },
-            { id: 4, text: '我的听觉很敏锐', tone: 'fa', freq: 349.23, order: 4 },
-            { id: 5, text: '通过声音分辨事物', tone: 'sol', freq: 392.00, order: 5 },
-            { id: 6, text: '触觉是我的眼睛', tone: 'la', freq: 440.00, order: 6 }
+            {
+                id: 1,
+                text: 'Blind people cannot see the world with their eyes.',
+                keywords: ['Blind', 'cannot', 'see'],
+                tone: 'Do',
+                freq: 261.63,
+                order: 1
+            },
+            {
+                id: 2,
+                text: 'They mainly rely on touching objects to perceive their shapes and textures.',
+                keywords: ['rely', 'touching', 'perceive'],
+                tone: 'Re',
+                freq: 293.66,
+                order: 2
+            },
+            {
+                id: 3,
+                text: 'Over time, their sense of hearing becomes extremely sharp.',
+                keywords: ['hearing', 'becomes', 'sharp'],
+                tone: 'Mi',
+                freq: 329.63,
+                order: 3
+            },
+            {
+                id: 4,
+                text: 'This keen hearing helps them distinguish different objects around them.',
+                keywords: ['hearing', 'distinguish', 'objects'],
+                tone: 'Fa',
+                freq: 349.23,
+                order: 4
+            },
+            {
+                id: 5,
+                text: 'For example, they can tell the sound of a walking stick tapping the ground from other noises.',
+                keywords: ['walking stick', 'tapping', 'ground'],
+                tone: 'Sol',
+                freq: 392.00,
+                order: 5
+            },
+            {
+                id: 6,
+                text: 'These special skills let them live independently in daily life.',
+                keywords: ['skills', 'live', 'independently'],
+                tone: 'La',
+                freq: 440.00,
+                order: 6
+            }
         ];
 
         // ============= 状态 =============
@@ -355,27 +396,26 @@
             mouseX: window.innerWidth / 2,
             mouseY: window.innerHeight / 2,
             dragging: null,
-            dragOffset: { x: 0, y: 0 },
-            sentencePositions: [],
+            dragStartPos: null,
+            sentenceAreas: [],
             slotContents: [null, null, null, null, null, null],
             completed: false,
-            lastSoundTime: 0
+            lastSoundTime: 0,
+            lastTouchSentence: null
         };
 
         // ============= DOM =============
         const el = {
             scene: document.getElementById('scene'),
-            sceneSvg: document.getElementById('sceneSvg'),
-            maskCircle: document.getElementById('maskCircle'),
             touchCircle: document.getElementById('touchCircle'),
             sensation: document.getElementById('sensation'),
+            dragIndicator: document.getElementById('dragIndicator'),
             instruction: document.getElementById('instruction'),
             soundToggle: document.getElementById('soundToggle'),
             live: document.getElementById('liveRegion'),
             endScreen: document.getElementById('endScreen'),
             endMessage: document.getElementById('endMessage'),
-            sortArea: document.getElementById('sortArea'),
-            sentenceOutlines: document.getElementById('sentenceOutlines')
+            sortArea: document.getElementById('sortArea')
         };
 
         // ============= 音频 =============
@@ -403,7 +443,7 @@
                 const now = Date.now();
                 if (now - state.lastSoundTime < 300) return;
                 state.lastSoundTime = now;
-                this.tone(freq, 0.4);
+                this.tone(freq, 0.5);
             },
             success() {
                 this.tone(523, 0.2);
@@ -421,91 +461,65 @@
             // 随机打乱句子顺序
             const shuffled = [...sentences].sort(() => Math.random() - 0.5);
 
-            // 移除旧的句子卡片
-            document.querySelectorAll('.sentence-card').forEach(card => card.remove());
-
-            // 创建句子卡片和轮廓
-            state.sentencePositions = [];
-            el.sentenceOutlines.innerHTML = '';
+            // 创建句子感应区域（完全隐藏）
+            state.sentenceAreas = [];
 
             shuffled.forEach((sentence, index) => {
                 // 随机位置（避开中央排序区域）
                 let x, y;
                 do {
-                    x = 100 + Math.random() * (w - 300);
+                    x = 150 + Math.random() * (w - 300);
                     y = 100 + Math.random() * (h - 200);
                 } while (
-                    x > w/2 - 300 && x < w/2 + 300 &&
-                    y > h/2 - 100 && y < h/2 + 100
+                    x > w/2 - 200 && x < w/2 + 200 &&
+                    y > h/2 - 200 && y < h/2 + 200
                 );
 
-                // 创建卡片
-                const card = document.createElement('div');
-                card.className = 'sentence-card';
-                card.textContent = sentence.text;
-                card.dataset.id = sentence.id;
-                card.dataset.tone = sentence.tone;
-                card.dataset.freq = sentence.freq;
-                card.style.left = x + 'px';
-                card.style.top = y + 'px';
-
-                // 添加事件监听
-                card.addEventListener('mousedown', startDrag);
-                card.addEventListener('touchstart', startDrag);
-                card.addEventListener('mouseenter', () => {
-                    if (!state.dragging) {
-                        Audio.playTone(sentence.freq);
-                    }
-                });
-
-                el.scene.appendChild(card);
-
-                // 创建SVG轮廓
-                const cardWidth = 200;
-                const cardHeight = 80;
-                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                rect.classList.add('outline');
-                rect.setAttribute('x', x - 10);
-                rect.setAttribute('y', y - 10);
-                rect.setAttribute('width', cardWidth);
-                rect.setAttribute('height', cardHeight);
-                rect.setAttribute('rx', 8);
-                rect.dataset.id = sentence.id;
-                el.sentenceOutlines.appendChild(rect);
-
-                state.sentencePositions.push({
+                state.sentenceAreas.push({
                     id: sentence.id,
-                    x: x + cardWidth / 2,
-                    y: y + cardHeight / 2,
+                    x: x,
+                    y: y,
+                    width: 300,
+                    height: 80,
                     text: sentence.text,
+                    keywords: sentence.keywords,
                     tone: sentence.tone,
-                    freq: sentence.freq
+                    freq: sentence.freq,
+                    placed: false
                 });
             });
         }
 
         // ============= 拖拽处理 =============
-        function startDrag(e) {
+        function startDrag(x, y) {
             if (state.completed) return;
 
-            e.preventDefault();
-            const card = e.currentTarget;
-            state.dragging = card;
+            // 检测是否在句子区域内
+            const sentence = findSentenceAtPosition(x, y);
+            if (!sentence || sentence.placed) return;
 
-            const rect = card.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            state.dragging = sentence;
+            state.dragStartPos = { x, y };
 
-            state.dragOffset = {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
-
-            card.classList.add('dragging');
-            card.style.zIndex = 1000;
+            // 显示拖拽指示器
+            el.dragIndicator.textContent = sentence.text;
+            el.dragIndicator.style.left = x + 'px';
+            el.dragIndicator.style.top = (y - 40) + 'px';
+            el.dragIndicator.classList.add('visible');
 
             // 播放音调
-            Audio.playTone(parseFloat(card.dataset.freq));
+            Audio.playTone(sentence.freq);
+        }
+
+        function onMouseDown(e) {
+            startDrag(e.clientX, e.clientY);
+        }
+
+        function onTouchStart(e) {
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                startDrag(touch.clientX, touch.clientY);
+            }
         }
 
         function onMouseMove(e) {
@@ -513,18 +527,8 @@
 
             if (state.dragging) {
                 e.preventDefault();
-                const x = e.clientX - state.dragOffset.x;
-                const y = e.clientY - state.dragOffset.y;
-                state.dragging.style.left = x + 'px';
-                state.dragging.style.top = y + 'px';
-
-                // 更新SVG轮廓位置
-                const outline = el.sentenceOutlines.querySelector(`[data-id="${state.dragging.dataset.id}"]`);
-                if (outline) {
-                    outline.setAttribute('x', x - 10);
-                    outline.setAttribute('y', y - 10);
-                }
-
+                el.dragIndicator.style.left = e.clientX + 'px';
+                el.dragIndicator.style.top = (e.clientY - 40) + 'px';
                 checkSlotHighlight(e.clientX, e.clientY);
             }
         }
@@ -537,18 +541,8 @@
 
             if (state.dragging) {
                 e.preventDefault();
-                const x = touch.clientX - state.dragOffset.x;
-                const y = touch.clientY - state.dragOffset.y;
-                state.dragging.style.left = x + 'px';
-                state.dragging.style.top = y + 'px';
-
-                // 更新SVG轮廓位置
-                const outline = el.sentenceOutlines.querySelector(`[data-id="${state.dragging.dataset.id}"]`);
-                if (outline) {
-                    outline.setAttribute('x', x - 10);
-                    outline.setAttribute('y', y - 10);
-                }
-
+                el.dragIndicator.style.left = touch.clientX + 'px';
+                el.dragIndicator.style.top = (touch.clientY - 40) + 'px';
                 checkSlotHighlight(touch.clientX, touch.clientY);
             }
         }
@@ -565,9 +559,11 @@
                 placeInSlot(state.dragging, slot);
             }
 
-            state.dragging.classList.remove('dragging');
-            state.dragging.style.zIndex = 10;
             state.dragging = null;
+            state.dragStartPos = null;
+
+            // 隐藏拖拽指示器
+            el.dragIndicator.classList.remove('visible');
 
             // 移除所有高亮
             document.querySelectorAll('.sort-slot').forEach(s => s.classList.remove('highlight'));
@@ -589,53 +585,66 @@
         function findSlotAtPosition(x, y) {
             const slots = document.querySelectorAll('.sort-slot');
             for (let slot of slots) {
-                const rect = slot.getBoundingClientRect();
-                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                const line = slot.querySelector('.slot-line');
+                const rect = line.getBoundingClientRect();
+                // 扩大检测区域
+                if (x >= rect.left - 20 && x <= rect.right + 20 &&
+                    y >= rect.top - 20 && y <= rect.bottom + 20) {
                     return slot;
                 }
             }
             return null;
         }
 
-        function placeInSlot(card, slot) {
-            const slotIndex = parseInt(slot.dataset.slot) - 1;
-            const sentenceId = parseInt(card.dataset.id);
+        function findSentenceAtPosition(x, y) {
+            for (let area of state.sentenceAreas) {
+                if (x >= area.x - area.width/2 && x <= area.x + area.width/2 &&
+                    y >= area.y - area.height/2 && y <= area.y + area.height/2) {
+                    return area;
+                }
+            }
+            return null;
+        }
 
-            // 如果槽位已有内容，移除旧的
+        function placeInSlot(sentence, slot) {
+            const slotIndex = parseInt(slot.dataset.slot) - 1;
+
+            // 如果槽位已有内容，将旧内容恢复为未放置状态
             if (state.slotContents[slotIndex]) {
-                const oldCard = document.querySelector(`[data-id="${state.slotContents[slotIndex]}"]`);
-                if (oldCard) {
-                    oldCard.classList.remove('placed');
+                const oldSentence = state.sentenceAreas.find(s => s.id === state.slotContents[slotIndex]);
+                if (oldSentence) {
+                    oldSentence.placed = false;
                 }
             }
 
             // 如果这个句子已在其他槽位，清除旧槽位
-            const oldSlotIndex = state.slotContents.indexOf(sentenceId);
+            const oldSlotIndex = state.slotContents.indexOf(sentence.id);
             if (oldSlotIndex !== -1) {
                 state.slotContents[oldSlotIndex] = null;
                 const oldSlot = document.querySelector(`.sort-slot[data-slot="${oldSlotIndex + 1}"]`);
                 if (oldSlot) {
                     oldSlot.classList.remove('filled');
-                    oldSlot.innerHTML = `<span class="slot-number">${oldSlotIndex + 1}</span>`;
+                    const oldContent = oldSlot.querySelector('.slot-content');
+                    if (oldContent) oldContent.remove();
                 }
             }
 
-            // 放置卡片
-            state.slotContents[slotIndex] = sentenceId;
-            card.classList.add('placed');
+            // 放置句子
+            state.slotContents[slotIndex] = sentence.id;
+            sentence.placed = true;
 
             // 更新槽位显示
             slot.classList.add('filled');
-            slot.innerHTML = `
-                <span class="slot-number">${slotIndex + 1}</span>
-                <span class="sentence-text">${card.textContent}</span>
-            `;
+            const existingContent = slot.querySelector('.slot-content');
+            if (existingContent) existingContent.remove();
 
-            // 隐藏卡片
-            card.style.display = 'none';
+            const content = document.createElement('div');
+            content.className = 'slot-content';
+            content.textContent = sentence.text;
+            slot.querySelector('.slot-line').appendChild(content);
 
             // 播放音调
-            Audio.playTone(parseFloat(card.dataset.freq));
+            Audio.playTone(sentence.freq);
         }
 
         function checkCompletion() {
@@ -664,23 +673,39 @@
             el.touchCircle.style.left = x + 'px';
             el.touchCircle.style.top = y + 'px';
 
-            // 更新遮罩圆位置
-            el.maskCircle.setAttribute('cx', x);
-            el.maskCircle.setAttribute('cy', y);
-
             // 检测触摸内容
             checkTouch(x, y);
         }
 
         function checkTouch(x, y) {
+            if (state.dragging) {
+                // 拖拽时不显示感知文本
+                el.sensation.classList.remove('visible');
+                return;
+            }
+
             let text = '';
+            let currentSentence = null;
 
-            // 检测句子
-            for (let pos of state.sentencePositions) {
-                const dist = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2));
+            // 检测句子区域
+            for (let area of state.sentenceAreas) {
+                if (area.placed) continue; // 已放置的不显示
 
-                if (dist < 80) {
-                    text = pos.tone.toUpperCase() + '\n' + pos.text;
+                const dist = Math.sqrt(
+                    Math.pow(x - area.x, 2) +
+                    Math.pow(y - area.y, 2)
+                );
+
+                if (dist < 100) {
+                    // 显示2-3个关键词和音调
+                    text = area.tone + '\n' + area.keywords.join(' / ');
+                    currentSentence = area;
+
+                    // 播放音调（仅当切换到新句子时）
+                    if (state.lastTouchSentence !== area.id) {
+                        Audio.playTone(area.freq);
+                        state.lastTouchSentence = area.id;
+                    }
                     break;
                 }
             }
@@ -691,19 +716,32 @@
                 el.sensation.classList.add('visible');
             } else {
                 el.sensation.classList.remove('visible');
+                state.lastTouchSentence = null;
             }
         }
 
         // ============= 键盘控制 =============
         function onKeyDown(e) {
-            const step = 25;
+            const step = 30;
             let moved = false;
 
             switch(e.key) {
-                case 'ArrowUp': state.mouseY = Math.max(60, state.mouseY - step); moved = true; break;
-                case 'ArrowDown': state.mouseY = Math.min(window.innerHeight - 60, state.mouseY + step); moved = true; break;
-                case 'ArrowLeft': state.mouseX = Math.max(60, state.mouseX - step); moved = true; break;
-                case 'ArrowRight': state.mouseX = Math.min(window.innerWidth - 60, state.mouseX + step); moved = true; break;
+                case 'ArrowUp':
+                    state.mouseY = Math.max(60, state.mouseY - step);
+                    moved = true;
+                    break;
+                case 'ArrowDown':
+                    state.mouseY = Math.min(window.innerHeight - 60, state.mouseY + step);
+                    moved = true;
+                    break;
+                case 'ArrowLeft':
+                    state.mouseX = Math.max(60, state.mouseX - step);
+                    moved = true;
+                    break;
+                case 'ArrowRight':
+                    state.mouseX = Math.min(window.innerWidth - 60, state.mouseX + step);
+                    moved = true;
+                    break;
             }
 
             if (moved) {
@@ -715,7 +753,7 @@
         // ============= 结束画面 =============
         function showEnd() {
             el.instruction.style.opacity = 0;
-            el.endMessage.innerHTML = '你理解了盲人的世界<br><br>黑暗中，触觉与听觉<br>是他们感知世界的方式';
+            el.endMessage.innerHTML = 'You understood the world of the blind<br><br>In darkness, touch and hearing<br>are their ways to perceive the world';
             el.endScreen.classList.add('visible');
         }
 
@@ -737,6 +775,8 @@
 
             el.scene.addEventListener('mousemove', onMouseMove);
             el.scene.addEventListener('touchmove', onTouchMove, { passive: false });
+            el.scene.addEventListener('mousedown', onMouseDown);
+            el.scene.addEventListener('touchstart', onTouchStart, { passive: false });
             el.scene.addEventListener('mouseup', endDrag);
             el.scene.addEventListener('touchend', endDrag);
             el.scene.addEventListener('keydown', onKeyDown);
