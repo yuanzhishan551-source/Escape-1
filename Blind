@@ -494,7 +494,8 @@
                 ];
 
                 files.forEach(file => {
-                    const audio = new Audio(file);
+                    const audio = document.createElement('audio');
+                    audio.src = file;
                     audio.preload = 'auto';
                     this.sounds[file] = audio;
                 });
