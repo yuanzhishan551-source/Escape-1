@@ -40,7 +40,7 @@
         /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
         .sentence-text {
             fill: rgba(220, 220, 220, 0.9);
-            font-size: 16px;
+            font-size: 19px;
             font-family: 'Segoe UI', system-ui, sans-serif;
             cursor: grab;
             user-select: none;
@@ -224,7 +224,7 @@
                 padding: 0 20px;
             }
             .sentence-text {
-                font-size: 14px;
+                font-size: 17px;
             }
         }
 
@@ -252,7 +252,7 @@
                 </radialGradient>
                 <mask id="touchMask">
                     <rect width="100%" height="100%" fill="black"/>
-                    <circle id="maskCircle" r="80" fill="url(#touchGradient)"/>
+                    <circle id="maskCircle" r="50" fill="url(#touchGradient)"/>
                 </mask>
             </defs>
 
@@ -432,18 +432,53 @@
             state.sentenceElements = [];
 
             shuffled.forEach((sentence, index) => {
-                // 随机位置（避开中央排序区域）
+                // 预先计算文本尺寸
+                const lines = wrapText(sentence.text, 30); // 每行最多30个字符
+                const estimatedWidth = lines[0].length * 12; // 更准确的宽度估计（19px字体）
+                const estimatedHeight = lines.length * 24;
+
+                // 随机位置（避开中央排序区域和已有句子）
                 let x, y;
+                let attempts = 0;
+                let validPosition = false;
+
                 do {
                     x = 150 + Math.random() * (w - 300);
                     y = 100 + Math.random() * (h - 200);
-                } while (
-                    x > w/2 - 200 && x < w/2 + 200 &&
-                    y > h/2 - 200 && y < h/2 + 200
-                );
+                    attempts++;
 
-                // 创建SVG文本元素 - 支持多行文本
-                const lines = wrapText(sentence.text, 30); // 每行最多30个字符
+                    // 检查是否在中央排序区域
+                    const inCenterArea = (
+                        x > w/2 - 200 && x < w/2 + 200 &&
+                        y > h/2 - 200 && y < h/2 + 200
+                    );
+
+                    if (inCenterArea) continue;
+
+                    // 检查是否与已有句子重叠（留出边距）
+                    validPosition = true;
+                    const margin = 80; // 句子之间的最小距离
+
+                    for (let existing of state.sentenceElements) {
+                        const dx = Math.abs(x - existing.x);
+                        const dy = Math.abs(y - existing.y);
+                        const minDistX = (estimatedWidth + existing.width) / 2 + margin;
+                        const minDistY = (estimatedHeight + existing.height) / 2 + margin;
+
+                        if (dx < minDistX && dy < minDistY) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+
+                    // 如果尝试太多次，降低要求
+                    if (attempts > 100) {
+                        validPosition = !inCenterArea;
+                    }
+
+                } while (!validPosition && attempts < 200);
+
+                // 创建SVG文本元素
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 textGroup.dataset.id = sentence.id;
                 textGroup.dataset.freq = sentence.freq;
@@ -452,7 +487,7 @@
                     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     text.classList.add('sentence-text');
                     text.setAttribute('x', x);
-                    text.setAttribute('y', y + lineIndex * 20);
+                    text.setAttribute('y', y + lineIndex * 24);
                     text.textContent = line;
                     textGroup.appendChild(text);
                 });
@@ -467,8 +502,8 @@
                     freq: sentence.freq,
                     element: textGroup,
                     placed: false,
-                    width: lines[0].length * 10, // 粗略估计宽度
-                    height: lines.length * 20
+                    width: estimatedWidth,
+                    height: estimatedHeight
                 });
             });
         }
@@ -539,7 +574,7 @@
                 const texts = state.dragging.element.querySelectorAll('text');
                 texts.forEach((text, index) => {
                     text.setAttribute('x', newX);
-                    text.setAttribute('y', newY + index * 20);
+                    text.setAttribute('y', newY + index * 24);
                 });
 
                 checkSlotHighlight(e.clientX, e.clientY);
@@ -564,7 +599,7 @@
                 const texts = state.dragging.element.querySelectorAll('text');
                 texts.forEach((text, index) => {
                     text.setAttribute('x', newX);
-                    text.setAttribute('y', newY + index * 20);
+                    text.setAttribute('y', newY + index * 24);
                 });
 
                 checkSlotHighlight(touch.clientX, touch.clientY);
@@ -625,7 +660,7 @@
                 const halfHeight = sentence.height / 2;
 
                 if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
-                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 40) {
+                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 50) {
                     return sentence;
                 }
             }
@@ -722,7 +757,7 @@
                 const halfHeight = sentence.height / 2;
 
                 if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
-                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 40) {
+                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 50) {
                     Audio.playTone(sentence.freq);
                     break;
                 }
