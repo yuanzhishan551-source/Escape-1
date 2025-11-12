@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>盲人寻钥</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #000;
+            color: #666;
+            min-height: 100vh;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        /* 场景容器 */
+        .scene {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #000;
+        }
+
+        /* SVG 场景层 */
+        .scene-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 物体轮廓 - 使用遮罩只显示触摸圈内的部分 */
+        .outline {
+            fill: none;
+            stroke: rgba(220, 220, 220, 0.75);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: blur(0.5px);
+        }
+
+        /* 草地纹理 */
+        .grass-blade {
+            fill: none;
+            stroke: rgba(180, 180, 180, 0.4);
+            stroke-width: 1;
+            stroke-linecap: round;
+            filter: blur(0.5px);
+        }
+
+        /* 墙壁纹理 */
+        .wall-line {
+            fill: none;
+            stroke: rgba(160, 160, 160, 0.35);
+            stroke-width: 1.2;
+            filter: blur(0.5px);
+        }
+
+        /* 触摸圈 - 只保留中心点 */
+        .touch-circle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+
+        .touch-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 3px;
+            height: 3px;
+            background: rgba(200, 200, 200, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px rgba(200, 200, 200, 0.4);
+        }
+
+        /* 感知文本 */
+        .sensation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(220, 220, 220, 0.9);
+            font-size: 1.1rem;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s;
+            max-width: 300px;
+            line-height: 1.8;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+            z-index: 50;
+        }
+
+        .sensation.visible {
+            opacity: 1;
+        }
+
+        /* 操作提示 */
+        .action-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(180, 180, 180, 0.7);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .action-hint.visible {
+            opacity: 1;
+        }
+
+        /* 完整的门（开门时显示） */
+        .door-full {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.8s;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .door-full.visible {
+            opacity: 1;
+        }
+
+        .door-panel {
+            width: 180px;
+            height: 280px;
+            background: linear-gradient(to right, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+            border: 2px solid #333;
+            border-radius: 6px;
+            position: relative;
+            transform-origin: left center;
+            transition: transform 1s ease-out;
+        }
+
+        .door-panel.opening {
+            transform: perspective(400px) rotateY(-105deg);
+        }
+
+        .door-knob-full {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            width: 12px;
+            height: 12px;
+            background: #444;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(100, 100, 100, 0.3);
+        }
+
+        /* 声音开关 */
+        .sound-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: 1px solid rgba(100, 100, 100, 0.3);
+            color: rgba(150, 150, 150, 0.6);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        .sound-toggle:hover,
+        .sound-toggle:focus {
+            border-color: rgba(150, 150, 150, 0.5);
+            color: rgba(180, 180, 180, 0.8);
+            outline: none;
+        }
+
+        /* 结束画面 */
+        .end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 1s;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        .end-screen.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .end-message {
+            text-align: center;
+            color: rgba(220, 220, 220, 0.9);
+            font-size: 1.3rem;
+            line-height: 2;
+            max-width: 400px;
+        }
+
+        /* 屏幕阅读器 */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        @media (max-width: 768px) {
+            .sensation {
+                font-size: 0.95rem;
+            }
+            .end-message {
+                font-size: 1.1rem;
+                padding: 20px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 场景 -->
+    <div class="scene" id="scene" role="application" aria-label="探索区域" tabindex="0">
+        
+        <!-- SVG 场景 - 所有物体的轮廓 -->
+        <svg class="scene-svg" id="sceneSvg">
+            <defs>
+                <!-- 圆形遮罩 - 只显示触摸圈内的内容 -->
+                <radialGradient id="touchGradient">
+                    <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                    <stop offset="50%" stop-color="white" stop-opacity="0.7"/>
+                    <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="white" stop-opacity="0"/>
+                </radialGradient>
+                <mask id="touchMask">
+                    <rect width="100%" height="100%" fill="black"/>
+                    <circle id="maskCircle" r="35" fill="url(#touchGradient)"/>
+                </mask>
+            </defs>
+            
+            <!-- 背景层 - 墙壁和草地 -->
+            <g id="backgroundLayer" mask="url(#touchMask)">
+                <!-- 草地 -->
+                <g id="grassLayer"></g>
+                <!-- 墙壁 -->
+                <g id="wallLayer"></g>
+            </g>
+            
+            <!-- 钥匙层 -->
+            <g id="keyLayer" mask="url(#touchMask)">
+                <circle class="outline" id="keyRing" r="10"/>
+                <path class="outline" id="keyShaft"/>
+                <path class="outline" id="keyTeeth"/>
+            </g>
+            
+            <!-- 门层 -->
+            <g id="doorLayer" mask="url(#touchMask)">
+                <rect class="outline" id="doorFrame"/>
+                <rect class="outline" id="doorPanel1"/>
+                <rect class="outline" id="doorPanel2"/>
+                <circle class="outline" id="doorKnob" r="8"/>
+                <ellipse class="outline" id="keyhole"/>
+            </g>
+        </svg>
+        
+        <!-- 触摸圈 -->
+        <div class="touch-circle" id="touchCircle"></div>
+        
+        <!-- 感知文本 -->
+        <div class="sensation" id="sensation" role="status" aria-live="polite"></div>
+        
+        <!-- 操作提示 -->
+        <div class="action-hint" id="actionHint"></div>
+        
+        <!-- 完整的门（开门动画用） -->
+        <div class="door-full" id="doorFull">
+            <div class="door-panel" id="doorPanelFull">
+                <div class="door-knob-full"></div>
+            </div>
+        </div>
+
+        <!-- 结束画面 -->
+        <div class="end-screen" id="endScreen">
+            <div class="end-message" id="endMessage"></div>
+        </div>
+    </div>
+
+    <!-- 声音开关 -->
+    <button class="sound-toggle" id="soundToggle" aria-pressed="true">声音</button>
+
+    <!-- 屏幕阅读器 -->
+    <div class="sr-only" role="status" aria-live="polite" id="liveRegion"></div>
+
+    <script>
+        // ============= 状态 =============
+        const state = {
+            hasKey: false,
+            doorOpened: false,
+            soundOn: true,
+            mouseX: window.innerWidth / 2,
+            mouseY: window.innerHeight / 2,
+            keyX: 0,
+            keyY: 0,
+            doorX: 0,
+            doorY: 0,
+            lastSoundTime: 0
+        };
+
+        // ============= DOM =============
+        const el = {
+            scene: document.getElementById('scene'),
+            sceneSvg: document.getElementById('sceneSvg'),
+            maskCircle: document.getElementById('maskCircle'),
+            touchCircle: document.getElementById('touchCircle'),
+            sensation: document.getElementById('sensation'),
+            hint: document.getElementById('actionHint'),
+            soundToggle: document.getElementById('soundToggle'),
+            live: document.getElementById('liveRegion'),
+            doorFull: document.getElementById('doorFull'),
+            doorPanelFull: document.getElementById('doorPanelFull'),
+            endScreen: document.getElementById('endScreen'),
+            endMessage: document.getElementById('endMessage'),
+            grassLayer: document.getElementById('grassLayer'),
+            wallLayer: document.getElementById('wallLayer'),
+            keyRing: document.getElementById('keyRing'),
+            keyShaft: document.getElementById('keyShaft'),
+            keyTeeth: document.getElementById('keyTeeth'),
+            keyLayer: document.getElementById('keyLayer'),
+            doorFrame: document.getElementById('doorFrame'),
+            doorPanel1: document.getElementById('doorPanel1'),
+            doorPanel2: document.getElementById('doorPanel2'),
+            doorKnob: document.getElementById('doorKnob'),
+            keyhole: document.getElementById('keyhole'),
+            doorLayer: document.getElementById('doorLayer')
+        };
+
+        // ============= 音频 =============
+        const Audio = {
+            ctx: null,
+            init() {
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {}
+            },
+            tone(freq, dur, vol = 0.15) {
+                if (!state.soundOn || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.frequency.value = freq;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+                osc.start();
+                osc.stop(this.ctx.currentTime + dur);
+            },
+            metal() {
+                const now = Date.now();
+                if (now - state.lastSoundTime < 200) return;
+                state.lastSoundTime = now;
+                this.tone(900, 0.08);
+                setTimeout(() => this.tone(1200, 0.06), 40);
+            },
+            found() {
+                this.tone(523, 0.25);
+                setTimeout(() => this.tone(659, 0.25), 100);
+                setTimeout(() => this.tone(784, 0.3), 200);
+            },
+            door() {
+                this.tone(350, 0.4);
+                setTimeout(() => this.tone(280, 0.3), 200);
+            },
+            wood() {
+                const now = Date.now();
+                if (now - state.lastSoundTime < 300) return;
+                state.lastSoundTime = now;
+                this.tone(180, 0.15, 0.1);
+            }
+        };
+
+        // ============= 初始化场景 =============
+        function initScene() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            
+            // 门在屏幕中央上方
+            state.doorX = w / 2;
+            state.doorY = h / 2 - 50;
+            
+            // 钥匙随机位置（在屏幕下半部分）
+            state.keyX = 200 + Math.random() * (w - 400);
+            state.keyY = h * 0.6 + Math.random() * (h * 0.3);
+            
+            // 绘制草地（非常密集）
+            generateGrass();
+            
+            // 绘制墙壁
+            generateWalls();
+            
+            // 绘制钥匙
+            drawKey();
+            
+            // 绘制门
+            drawDoor();
+        }
+
+        // 生成密集的草地
+        function generateGrass() {
+            el.grassLayer.innerHTML = '';
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            
+            // 草地从屏幕下半部分开始
+            const grassStartY = h * 0.5;
+            const numBlades = 300; // 非常密集
+            
+            for (let i = 0; i < numBlades; i++) {
+                const x = Math.random() * w;
+                const y = grassStartY + Math.random() * (h - grassStartY);
+                const height = 15 + Math.random() * 25;
+                const curve = (Math.random() - 0.5) * 8;
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.classList.add('grass-blade');
+                path.setAttribute('d', `M ${x},${y} q ${curve},${-height/2} ${curve*0.5},${-height}`);
+                el.grassLayer.appendChild(path);
+            }
+        }
+
+        // 生成墙壁纹理
+        function generateWalls() {
+            el.wallLayer.innerHTML = '';
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            
+            const doorWidth = 180;
+            const wallY = h * 0.5;
+            
+            // 左墙
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * (state.doorX - doorWidth);
+                const y = Math.random() * wallY;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.classList.add('wall-line');
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', x + Math.random() * 30 - 15);
+                line.setAttribute('y2', y + Math.random() * 20 - 10);
+                el.wallLayer.appendChild(line);
+            }
+            
+            // 右墙
+            for (let i = 0; i < 50; i++) {
+                const x = state.doorX + doorWidth + Math.random() * (w - state.doorX - doorWidth);
+                const y = Math.random() * wallY;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.classList.add('wall-line');
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', x + Math.random() * 30 - 15);
+                line.setAttribute('y2', y + Math.random() * 20 - 10);
+                el.wallLayer.appendChild(line);
+            }
+        }
+
+        // 绘制钥匙
+        function drawKey() {
+            el.keyRing.setAttribute('cx', state.keyX);
+            el.keyRing.setAttribute('cy', state.keyY);
+            
+            el.keyShaft.setAttribute('d', `M ${state.keyX + 10},${state.keyY} L ${state.keyX + 50},${state.keyY}`);
+            
+            el.keyTeeth.setAttribute('d', `
+                M ${state.keyX + 50},${state.keyY - 5}
+                L ${state.keyX + 50},${state.keyY + 5}
+                L ${state.keyX + 55},${state.keyY + 5}
+                L ${state.keyX + 55},${state.keyY + 2}
+                L ${state.keyX + 60},${state.keyY + 2}
+                L ${state.keyX + 60},${state.keyY + 5}
+                L ${state.keyX + 65},${state.keyY + 5}
+                L ${state.keyX + 65},${state.keyY - 5}
+                L ${state.keyX + 60},${state.keyY - 5}
+                L ${state.keyX + 60},${state.keyY - 2}
+                L ${state.keyX + 55},${state.keyY - 2}
+                L ${state.keyX + 55},${state.keyY - 5}
+                Z
+            `);
+        }
+
+        // 绘制门
+        function drawDoor() {
+            const dw = 160, dh = 260;
+            
+            el.doorFrame.setAttribute('x', state.doorX - dw/2);
+            el.doorFrame.setAttribute('y', state.doorY - dh/2);
+            el.doorFrame.setAttribute('width', dw);
+            el.doorFrame.setAttribute('height', dh);
+            el.doorFrame.setAttribute('rx', 5);
+            
+            el.doorPanel1.setAttribute('x', state.doorX - dw/2 + 15);
+            el.doorPanel1.setAttribute('y', state.doorY - dh/2 + 20);
+            el.doorPanel1.setAttribute('width', dw - 30);
+            el.doorPanel1.setAttribute('height', dh/2 - 35);
+            el.doorPanel1.setAttribute('rx', 3);
+            
+            el.doorPanel2.setAttribute('x', state.doorX - dw/2 + 15);
+            el.doorPanel2.setAttribute('y', state.doorY + 15);
+            el.doorPanel2.setAttribute('width', dw - 30);
+            el.doorPanel2.setAttribute('height', dh/2 - 35);
+            el.doorPanel2.setAttribute('rx', 3);
+            
+            el.doorKnob.setAttribute('cx', state.doorX + dw/2 - 25);
+            el.doorKnob.setAttribute('cy', state.doorY);
+            
+            el.keyhole.setAttribute('cx', state.doorX + dw/2 - 25);
+            el.keyhole.setAttribute('cy', state.doorY + 20);
+            el.keyhole.setAttribute('rx', 3);
+            el.keyhole.setAttribute('ry', 6);
+        }
+
+        // ============= 初始化 =============
+        function init() {
+            Audio.init();
+            initScene();
+            
+            el.scene.addEventListener('mousemove', onMouseMove);
+            el.scene.addEventListener('touchmove', onTouchMove);
+            el.scene.addEventListener('keydown', onKeyDown);
+            el.scene.addEventListener('click', onClick);
+            el.scene.addEventListener('touchend', onClick);
+            el.soundToggle.addEventListener('click', toggleSound);
+            
+            window.addEventListener('resize', initScene);
+            
+            updateTouchPosition(state.mouseX, state.mouseY);
+        }
+
+        // ============= 移动处理 =============
+        function onMouseMove(e) {
+            state.mouseX = e.clientX;
+            state.mouseY = e.clientY;
+            updateTouchPosition(state.mouseX, state.mouseY);
+        }
+
+        function onTouchMove(e) {
+            e.preventDefault();
+            const t = e.touches[0];
+            state.mouseX = t.clientX;
+            state.mouseY = t.clientY;
+            updateTouchPosition(state.mouseX, state.mouseY);
+        }
+
+        function onKeyDown(e) {
+            const step = 25;
+            let moved = false;
+
+            switch(e.key) {
+                case 'ArrowUp': state.mouseY = Math.max(60, state.mouseY - step); moved = true; break;
+                case 'ArrowDown': state.mouseY = Math.min(window.innerHeight - 60, state.mouseY + step); moved = true; break;
+                case 'ArrowLeft': state.mouseX = Math.max(60, state.mouseX - step); moved = true; break;
+                case 'ArrowRight': state.mouseX = Math.min(window.innerWidth - 60, state.mouseX + step); moved = true; break;
+                case ' ':
+                case 'Enter':
+                    e.preventDefault();
+                    onClick();
+                    return;
+            }
+
+            if (moved) {
+                e.preventDefault();
+                updateTouchPosition(state.mouseX, state.mouseY);
+            }
+        }
+
+        function updateTouchPosition(x, y) {
+            // 更新触摸圈位置
+            el.touchCircle.style.left = x + 'px';
+            el.touchCircle.style.top = y + 'px';
+            
+            // 更新遮罩圆位置
+            el.maskCircle.setAttribute('cx', x);
+            el.maskCircle.setAttribute('cy', y);
+            
+            // 检测触摸内容
+            checkTouch(x, y);
+        }
+
+        // ============= 触摸检测 =============
+        function checkTouch(x, y) {
+            let text = '';
+            let hint = '';
+            
+            if (!state.hasKey) {
+                // 检测钥匙 - 更小的检测范围
+                const keyDist = Math.sqrt(Math.pow(x - state.keyX, 2) + Math.pow(y - state.keyY, 2));
+                
+                if (keyDist < 50) {
+                    if (keyDist < 30) {
+                        text = 'cold\nsmooth\nmetal';
+                        Audio.metal();
+                    } else {
+                        text = 'hard\nsmall';
+                    }
+                } else if (y > window.innerHeight * 0.6) {
+                    // 在草地区域
+                    text = 'soft\ngrass';
+                } else if (y < window.innerHeight * 0.5 && (x < state.doorX - 100 || x > state.doorX + 100)) {
+                    // 墙壁区域（门两侧）
+                    text = 'cold\nrough\nwall';
+                }
+            } else {
+                // 检测门的不同部分
+                const doorDist = Math.sqrt(Math.pow(x - state.doorX, 2) + Math.pow(y - state.doorY, 2));
+                const doorKnobX = state.doorX + 80 - 25;
+                const doorKnobY = state.doorY;
+                const knobDist = Math.sqrt(Math.pow(x - doorKnobX, 2) + Math.pow(y - doorKnobY, 2));
+                const keyholeY = state.doorY + 20;
+                const keyholeDist = Math.sqrt(Math.pow(x - doorKnobX, 2) + Math.pow(y - keyholeY, 2));
+                
+                // 检测门把手
+                if (knobDist < 20) {
+                    text = 'round\nmetal\nknob';
+                    Audio.metal();
+                }
+                // 检测锁眼
+                else if (keyholeDist < 15) {
+                    text = 'hole\nmetal\nkeyhole';
+                    Audio.metal();
+                }
+                // 检测门板
+                else if (doorDist < 120) {
+                    if (doorDist < 60) {
+                        text = 'flat\nwood\ndoor';
+                        Audio.wood();
+                    } else {
+                        text = 'grain\nrough';
+                    }
+                } 
+                // 墙壁
+                else if (y < window.innerHeight * 0.5 && (x < state.doorX - 100 || x > state.doorX + 100)) {
+                    text = 'cold\nrough\nwall';
+                } 
+                // 草地
+                else if (y > window.innerHeight * 0.6) {
+                    text = 'soft\ngrass';
+                }
+            }
+            
+            // 更新文本
+            if (text) {
+                el.sensation.textContent = text;
+                el.sensation.classList.add('visible');
+            } else {
+                el.sensation.classList.remove('visible');
+            }
+            
+            // 更新提示
+            if (hint) {
+                el.hint.textContent = hint;
+                el.hint.classList.add('visible');
+            } else {
+                el.hint.classList.remove('visible');
+            }
+        }
+
+        // ============= 点击操作 =============
+        function onClick() {
+            if (state.doorOpened) return;
+
+            if (state.hasKey) {
+                const doorDist = Math.sqrt(
+                    Math.pow(state.mouseX - state.doorX, 2) + 
+                    Math.pow(state.mouseY - state.doorY, 2)
+                );
+                if (doorDist < 120) {
+                    openDoor();
+                }
+            } else {
+                const keyDist = Math.sqrt(
+                    Math.pow(state.mouseX - state.keyX, 2) + 
+                    Math.pow(state.mouseY - state.keyY, 2)
+                );
+                if (keyDist < 50) {
+                    pickupKey();
+                }
+            }
+        }
+
+        function pickupKey() {
+            state.hasKey = true;
+            Audio.found();
+            
+            // 隐藏钥匙
+            el.keyLayer.style.display = 'none';
+            
+            el.sensation.textContent = '钥匙';
+            el.sensation.classList.add('visible');
+            el.hint.textContent = '寻找门';
+            el.hint.classList.add('visible');
+            
+            announce('找到钥匙');
+            
+            setTimeout(() => {
+                el.hint.classList.remove('visible');
+            }, 2500);
+        }
+
+        function openDoor() {
+            state.doorOpened = true;
+            
+            // 隐藏所有遮罩内容
+            el.doorLayer.style.display = 'none';
+            el.grassLayer.style.display = 'none';
+            el.wallLayer.style.display = 'none';
+            
+            el.sensation.classList.remove('visible');
+            el.hint.classList.remove('visible');
+            
+            // 显示完整的门并打开
+            el.doorFull.classList.add('visible');
+            
+            setTimeout(() => {
+                el.doorPanelFull.classList.add('opening');
+                Audio.door();
+            }, 500);
+            
+            announce('门打开了');
+            
+            setTimeout(() => {
+                showEnd();
+            }, 2000);
+        }
+
+        function showEnd() {
+            el.endMessage.textContent = '光\n照进来了';
+            el.endScreen.classList.add('visible');
+        }
+
+        // ============= 辅助 =============
+        function toggleSound() {
+            state.soundOn = !state.soundOn;
+            el.soundToggle.setAttribute('aria-pressed', state.soundOn);
+        }
+
+        function announce(msg) {
+            el.live.textContent = msg;
+            setTimeout(() => el.live.textContent = '', 1000);
+        }
+
+        // ============= 启动 =============
+        init();
+    </script>
+</body>
+</html>
