@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The World of the Blind</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -40,8 +43,8 @@
         /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
         .sentence-text {
             fill: rgba(220, 220, 220, 0.9);
-            font-size: 19px;
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 38px;
+            font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
             cursor: grab;
             user-select: none;
         }
@@ -224,7 +227,7 @@
                 padding: 0 20px;
             }
             .sentence-text {
-                font-size: 17px;
+                font-size: 34px;
             }
         }
 
@@ -366,7 +369,8 @@
             sentenceElements: [],
             slotContents: [null, null, null, null, null, null],
             completed: false,
-            lastSoundTime: 0
+            lastSoundTime: 0,
+            currentTouchedSentence: null
         };
 
         // ============= DOM =============
@@ -433,9 +437,9 @@
 
             shuffled.forEach((sentence, index) => {
                 // 预先计算文本尺寸
-                const lines = wrapText(sentence.text, 30); // 每行最多30个字符
-                const estimatedWidth = lines[0].length * 12; // 更准确的宽度估计（19px字体）
-                const estimatedHeight = lines.length * 24;
+                const lines = wrapText(sentence.text, 20); // 每行最多20个字符（字体更大）
+                const estimatedWidth = lines[0].length * 24; // 更准确的宽度估计（38px字体）
+                const estimatedHeight = lines.length * 48;
 
                 // 随机位置（避开中央排序区域和已有句子）
                 let x, y;
@@ -487,7 +491,7 @@
                     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     text.classList.add('sentence-text');
                     text.setAttribute('x', x);
-                    text.setAttribute('y', y + lineIndex * 24);
+                    text.setAttribute('y', y + lineIndex * 48);
                     text.textContent = line;
                     textGroup.appendChild(text);
                 });
@@ -574,7 +578,7 @@
                 const texts = state.dragging.element.querySelectorAll('text');
                 texts.forEach((text, index) => {
                     text.setAttribute('x', newX);
-                    text.setAttribute('y', newY + index * 24);
+                    text.setAttribute('y', newY + index * 48);
                 });
 
                 checkSlotHighlight(e.clientX, e.clientY);
@@ -599,7 +603,7 @@
                 const texts = state.dragging.element.querySelectorAll('text');
                 texts.forEach((text, index) => {
                     text.setAttribute('x', newX);
-                    text.setAttribute('y', newY + index * 24);
+                    text.setAttribute('y', newY + index * 48);
                 });
 
                 checkSlotHighlight(touch.clientX, touch.clientY);
@@ -749,6 +753,8 @@
         function checkTouchSound(x, y) {
             if (state.dragging) return;
 
+            let touchedSentence = null;
+
             // 检测触摸到的句子
             for (let sentence of state.sentenceElements) {
                 if (sentence.placed) continue;
@@ -758,9 +764,18 @@
 
                 if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
                     y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 50) {
-                    Audio.playTone(sentence.freq);
+                    touchedSentence = sentence;
                     break;
                 }
+            }
+
+            // 只有当触摸到新句子时才播放音效
+            if (touchedSentence && touchedSentence.id !== state.currentTouchedSentence) {
+                Audio.playTone(touchedSentence.freq);
+                state.currentTouchedSentence = touchedSentence.id;
+            } else if (!touchedSentence) {
+                // 离开所有句子时，重置当前触摸的句子
+                state.currentTouchedSentence = null;
             }
         }
 
