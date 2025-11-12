@@ -103,6 +103,7 @@
             font-weight: 300;
             width: 20px;
             text-align: right;
+            display: none; /* 隐藏数字 */
         }
 
         .slot-line {
@@ -119,17 +120,25 @@
         }
 
         .sort-slot.filled .slot-line {
-            background: rgba(120, 180, 120, 0.6);
+            background: rgba(220, 220, 220, 0.9);
         }
 
-        .slot-content {
+        /* 声纹线 */
+        .waveform {
             position: absolute;
             left: 0;
-            top: -20px;
-            font-size: 0.9rem;
-            color: rgba(220, 220, 220, 0.85);
-            white-space: nowrap;
-            pointer-events: none;
+            top: -15px;
+            height: 30px;
+            width: 100%;
+            pointer-events: all;
+            cursor: pointer;
+        }
+
+        .waveform-line {
+            stroke: rgba(220, 220, 220, 0.7);
+            stroke-width: 1.5;
+            fill: none;
+            stroke-linecap: round;
         }
 
         /* 声音开关 */
@@ -345,7 +354,8 @@
             slotContents: [null, null, null, null, null, null],
             completed: false,
             lastSoundTime: 0,
-            currentTouchedSentence: null
+            currentTouchedSentence: null,
+            waveformFreqs: {} // 存储每个槽位的频率
         };
 
         // ============= DOM =============
@@ -362,7 +372,7 @@
             sentenceLayer: document.getElementById('sentenceLayer')
         };
 
-        // ============= 音频 =============
+        // ============= 音频 - 钢琴音色 =============
         const Audio = {
             ctx: null,
             init() {
@@ -370,30 +380,53 @@
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 } catch (e) {}
             },
-            tone(freq, dur, vol = 0.2) {
+            // 钢琴音色 - 使用多个谐波叠加
+            pianotone(freq, dur, vol = 0.15) {
                 if (!state.soundOn || !this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.frequency.value = freq;
-                osc.type = 'sine';
-                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
-                osc.start();
-                osc.stop(this.ctx.currentTime + dur);
+
+                const now = this.ctx.currentTime;
+
+                // 创建多个谐波来模拟钢琴音色
+                const harmonics = [
+                    { mult: 1, vol: 1.0 },      // 基频
+                    { mult: 2, vol: 0.5 },      // 2次谐波
+                    { mult: 3, vol: 0.25 },     // 3次谐波
+                    { mult: 4, vol: 0.125 },    // 4次谐波
+                    { mult: 5, vol: 0.0625 }    // 5次谐波
+                ];
+
+                harmonics.forEach(h => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.frequency.value = freq * h.mult;
+                    osc.type = 'sine';
+
+                    // 钢琴的音量包络：快速起音，然后衰减
+                    const attackTime = 0.01;
+                    const decayTime = 0.1;
+                    const sustainLevel = 0.3;
+
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(vol * h.vol, now + attackTime);
+                    gain.gain.exponentialRampToValueAtTime(vol * h.vol * sustainLevel, now + attackTime + decayTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+                    osc.start(now);
+                    osc.stop(now + dur);
+                });
             },
             playTone(freq) {
-                const now = Date.now();
-                if (now - state.lastSoundTime < 300) return;
-                state.lastSoundTime = now;
-                this.tone(freq, 0.5);
+                this.pianotone(freq, 0.8);
             },
             success() {
-                this.tone(523, 0.2);
-                setTimeout(() => this.tone(659, 0.2), 100);
-                setTimeout(() => this.tone(784, 0.25), 200);
-                setTimeout(() => this.tone(1047, 0.3), 300);
+                this.pianotone(523, 0.3);
+                setTimeout(() => this.pianotone(659, 0.3), 150);
+                setTimeout(() => this.pianotone(784, 0.35), 300);
+                setTimeout(() => this.pianotone(1047, 0.4), 450);
             }
         };
 
@@ -503,6 +536,22 @@
             if (currentLine) lines.push(currentLine);
 
             return lines;
+        }
+
+        // 生成声纹线路径
+        function generateWaveformPath(width, freq) {
+            const points = 50;
+            const amplitude = 8;
+            const frequency = (freq / 261.63) * 3; // 基于do音调整频率
+
+            let path = `M 0,0`;
+            for (let i = 1; i <= points; i++) {
+                const x = (i / points) * width;
+                const y = Math.sin((i / points) * Math.PI * 2 * frequency) * amplitude * (Math.random() * 0.3 + 0.7);
+                path += ` L ${x},${y}`;
+            }
+
+            return path;
         }
 
         // ============= 拖拽处理 =============
@@ -661,30 +710,51 @@
             const oldSlotIndex = state.slotContents.indexOf(sentence.id);
             if (oldSlotIndex !== -1) {
                 state.slotContents[oldSlotIndex] = null;
+                delete state.waveformFreqs[oldSlotIndex];
                 const oldSlot = document.querySelector(`.sort-slot[data-slot="${oldSlotIndex + 1}"]`);
                 if (oldSlot) {
                     oldSlot.classList.remove('filled');
-                    const oldContent = oldSlot.querySelector('.slot-content');
-                    if (oldContent) oldContent.remove();
+                    const oldWaveform = oldSlot.querySelector('.waveform');
+                    if (oldWaveform) oldWaveform.remove();
                 }
             }
 
             // 放置句子
             state.slotContents[slotIndex] = sentence.id;
+            state.waveformFreqs[slotIndex] = sentence.freq;
             sentence.placed = true;
 
             // 隐藏SVG元素
             sentence.element.style.display = 'none';
 
-            // 更新槽位显示
+            // 更新槽位显示 - 创建声纹线
             slot.classList.add('filled');
-            const existingContent = slot.querySelector('.slot-content');
-            if (existingContent) existingContent.remove();
+            const existingWaveform = slot.querySelector('.waveform');
+            if (existingWaveform) existingWaveform.remove();
 
-            const content = document.createElement('div');
-            content.className = 'slot-content';
-            content.textContent = sentence.text;
-            slot.querySelector('.slot-line').appendChild(content);
+            // 创建SVG声纹线
+            const lineElement = slot.querySelector('.slot-line');
+            const lineWidth = lineElement.offsetWidth;
+
+            const waveformSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            waveformSvg.classList.add('waveform');
+            waveformSvg.setAttribute('width', lineWidth);
+            waveformSvg.setAttribute('height', '30');
+            waveformSvg.setAttribute('viewBox', `0 -15 ${lineWidth} 30`);
+            waveformSvg.dataset.freq = sentence.freq;
+            waveformSvg.dataset.slot = slotIndex;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.classList.add('waveform-line');
+            path.setAttribute('d', generateWaveformPath(lineWidth, sentence.freq));
+
+            waveformSvg.appendChild(path);
+            lineElement.appendChild(waveformSvg);
+
+            // 添加鼠标悬停事件
+            waveformSvg.addEventListener('mouseenter', function() {
+                Audio.playTone(parseFloat(this.dataset.freq));
+            });
 
             // 播放音调
             Audio.playTone(sentence.freq);
