@@ -224,22 +224,24 @@
             pointer-events: none;
         }
 
-        /* 手部提示图标 */
-        .hand-hint {
+        /* 手部骨架画布 */
+        #handCanvas {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 120px;
-            opacity: 0.3;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            z-index: 1;
-            transition: opacity 0.5s;
-            user-select: none;
+            z-index: 10;
         }
 
-        .hand-hint.hidden {
-            opacity: 0;
+        /* 初始手部提示骨架 */
+        #handCanvas.hint-mode {
+            opacity: 0.3;
+        }
+
+        #handCanvas.tracking-mode {
+            opacity: 0.8;
         }
 
         /* 手部指示点 */
@@ -345,12 +347,12 @@
             <div class="end-message" id="endMessage"></div>
         </div>
 
-        <!-- 手部提示图标 -->
-        <div class="hand-hint" id="handHint">✋</div>
-
         <!-- 手部指示点 -->
         <div class="hand-pointer" id="handPointer" style="display: none;"></div>
     </div>
+
+    <!-- 手部骨架画布 -->
+    <canvas id="handCanvas" class="hint-mode"></canvas>
 
     <!-- 摄像头视频（隐藏） -->
     <video id="video" autoplay playsinline></video>
@@ -443,9 +445,14 @@
             sortArea: document.getElementById('sortArea'),
             sentenceLayer: document.getElementById('sentenceLayer'),
             video: document.getElementById('video'),
-            handHint: document.getElementById('handHint'),
+            handCanvas: document.getElementById('handCanvas'),
             handPointer: document.getElementById('handPointer')
         };
+
+        // 初始化画布
+        const canvasCtx = el.handCanvas.getContext('2d');
+        el.handCanvas.width = window.innerWidth;
+        el.handCanvas.height = window.innerHeight;
 
         // ============= 音频 - 钢琴音色 =============
         const Audio = {
@@ -508,6 +515,89 @@
         // ============= 手势识别系统 =============
         let hands, camera;
 
+        // MediaPipe Hand Connections (手部骨架连接)
+        const HAND_CONNECTIONS = [
+            [0, 1], [1, 2], [2, 3], [3, 4],           // 大拇指
+            [0, 5], [5, 6], [6, 7], [7, 8],           // 食指
+            [0, 9], [9, 10], [10, 11], [11, 12],      // 中指
+            [0, 13], [13, 14], [14, 15], [15, 16],    // 无名指
+            [0, 17], [17, 18], [18, 19], [19, 20],    // 小指
+            [5, 9], [9, 13], [13, 17]                  // 掌心连接
+        ];
+
+        // 绘制手部骨架
+        function drawHand(landmarks, mirrored = true) {
+            canvasCtx.clearRect(0, 0, el.handCanvas.width, el.handCanvas.height);
+
+            if (!landmarks) return;
+
+            // 绘制连接线
+            canvasCtx.strokeStyle = 'rgba(100, 200, 255, 0.6)';
+            canvasCtx.lineWidth = 3;
+            canvasCtx.lineCap = 'round';
+
+            HAND_CONNECTIONS.forEach(([start, end]) => {
+                const startPoint = landmarks[start];
+                const endPoint = landmarks[end];
+
+                const startX = mirrored ? (1 - startPoint.x) * el.handCanvas.width : startPoint.x * el.handCanvas.width;
+                const startY = startPoint.y * el.handCanvas.height;
+                const endX = mirrored ? (1 - endPoint.x) * el.handCanvas.width : endPoint.x * el.handCanvas.width;
+                const endY = endPoint.y * el.handCanvas.height;
+
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(startX, startY);
+                canvasCtx.lineTo(endX, endY);
+                canvasCtx.stroke();
+            });
+
+            // 绘制关键点
+            canvasCtx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+            landmarks.forEach((point) => {
+                const x = mirrored ? (1 - point.x) * el.handCanvas.width : point.x * el.handCanvas.width;
+                const y = point.y * el.handCanvas.height;
+
+                canvasCtx.beginPath();
+                canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            });
+        }
+
+        // 绘制初始提示手部骨架（静态）
+        function drawHintHand() {
+            // 创建一个居中的静态手部姿势
+            const centerX = 0.5;
+            const centerY = 0.5;
+            const scale = 1.5; // 放大比例
+
+            // 定义一个标准的手部姿势（张开的手）
+            const hintPose = [
+                { x: centerX, y: centerY },                                    // 0: 手腕
+                { x: centerX - 0.06 * scale, y: centerY - 0.02 * scale },     // 1: 大拇指
+                { x: centerX - 0.12 * scale, y: centerY - 0.08 * scale },     // 2
+                { x: centerX - 0.16 * scale, y: centerY - 0.14 * scale },     // 3
+                { x: centerX - 0.18 * scale, y: centerY - 0.20 * scale },     // 4: 大拇指尖
+                { x: centerX + 0.02 * scale, y: centerY - 0.08 * scale },     // 5: 食指根
+                { x: centerX + 0.04 * scale, y: centerY - 0.18 * scale },     // 6
+                { x: centerX + 0.05 * scale, y: centerY - 0.28 * scale },     // 7
+                { x: centerX + 0.06 * scale, y: centerY - 0.36 * scale },     // 8: 食指尖
+                { x: centerX + 0.10 * scale, y: centerY - 0.06 * scale },     // 9: 中指根
+                { x: centerX + 0.14 * scale, y: centerY - 0.18 * scale },     // 10
+                { x: centerX + 0.16 * scale, y: centerY - 0.30 * scale },     // 11
+                { x: centerX + 0.17 * scale, y: centerY - 0.40 * scale },     // 12: 中指尖
+                { x: centerX + 0.18 * scale, y: centerY - 0.04 * scale },     // 13: 无名指根
+                { x: centerX + 0.24 * scale, y: centerY - 0.14 * scale },     // 14
+                { x: centerX + 0.27 * scale, y: centerY - 0.24 * scale },     // 15
+                { x: centerX + 0.29 * scale, y: centerY - 0.32 * scale },     // 16: 无名指尖
+                { x: centerX + 0.24 * scale, y: centerY - 0.00 * scale },     // 17: 小指根
+                { x: centerX + 0.30 * scale, y: centerY - 0.08 * scale },     // 18
+                { x: centerX + 0.34 * scale, y: centerY - 0.16 * scale },     // 19
+                { x: centerX + 0.36 * scale, y: centerY - 0.22 * scale }      // 20: 小指尖
+            ];
+
+            drawHand(hintPose, false);
+        }
+
         function initHandTracking() {
             // 初始化 MediaPipe Hands
             hands = new Hands({
@@ -541,10 +631,14 @@
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const landmarks = results.multiHandLandmarks[0];
 
-                // 隐藏手部提示
+                // 绘制用户的手部骨架
+                drawHand(landmarks, true);
+
+                // 切换到追踪模式
                 if (!state.handDetected) {
                     state.handDetected = true;
-                    el.handHint.classList.add('hidden');
+                    el.handCanvas.classList.remove('hint-mode');
+                    el.handCanvas.classList.add('tracking-mode');
                 }
 
                 // 获取食指指尖 (8) 和大拇指指尖 (4)
@@ -608,6 +702,10 @@
                         // 如果正在拖动，结束拖动
                         endDrag({ clientX: state.pinchPoint.x, clientY: state.pinchPoint.y });
                     }
+                    // 恢复提示模式
+                    el.handCanvas.classList.remove('tracking-mode');
+                    el.handCanvas.classList.add('hint-mode');
+                    drawHintHand();
                 }
                 state.handDetected = false;
                 state.lastPinchState = false;
@@ -1203,6 +1301,9 @@
             Audio.init();
             initScene();
 
+            // 绘制初始提示手部骨架
+            drawHintHand();
+
             // 初始化手势识别
             initHandTracking();
 
@@ -1215,7 +1316,14 @@
             el.scene.addEventListener('keydown', onKeyDown);
             el.soundToggle.addEventListener('click', toggleSound);
 
-            window.addEventListener('resize', initScene);
+            window.addEventListener('resize', () => {
+                el.handCanvas.width = window.innerWidth;
+                el.handCanvas.height = window.innerHeight;
+                initScene();
+                if (!state.handDetected) {
+                    drawHintHand();
+                }
+            });
 
             updateTouchPosition(state.mouseX, state.mouseY);
         }
