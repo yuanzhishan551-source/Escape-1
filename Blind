@@ -37,6 +37,19 @@
             height: 100%;
         }
 
+        /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
+        .sentence-text {
+            fill: rgba(220, 220, 220, 0.9);
+            font-size: 16px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .sentence-text.dragging {
+            cursor: grabbing;
+        }
+
         /* 触摸圈 - 只保留中心点 */
         .touch-circle {
             position: absolute;
@@ -60,37 +73,6 @@
             box-shadow: 0 0 8px rgba(200, 200, 200, 0.4);
         }
 
-        /* 感知文本 - 显示2-3个核心词 */
-        .sensation {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: rgba(220, 220, 220, 0.9);
-            font-size: 1.3rem;
-            text-align: center;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            max-width: 400px;
-            line-height: 2;
-            text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
-            z-index: 50;
-            font-weight: 300;
-            letter-spacing: 0.1em;
-        }
-
-        .sensation.visible {
-            opacity: 1;
-        }
-
-        /* 句子区域（不可见，仅用于检测） */
-        .sentence-area {
-            position: absolute;
-            pointer-events: none;
-            opacity: 0;
-        }
-
         /* 排序区域 - 纵向 */
         .sort-area {
             position: absolute;
@@ -101,6 +83,7 @@
             flex-direction: column;
             gap: 35px;
             z-index: 5;
+            pointer-events: none;
         }
 
         .sort-slot {
@@ -184,26 +167,6 @@
             outline: none;
         }
 
-        /* 拖拽指示器 */
-        .drag-indicator {
-            position: absolute;
-            padding: 12px 20px;
-            background: rgba(40, 40, 40, 0.85);
-            border: 1px solid rgba(120, 120, 120, 0.4);
-            border-radius: 6px;
-            color: rgba(220, 220, 220, 0.9);
-            font-size: 0.95rem;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 1001;
-            font-weight: 300;
-        }
-
-        .drag-indicator.visible {
-            opacity: 1;
-        }
-
         /* 结束画面 */
         .end-screen {
             position: absolute;
@@ -260,8 +223,8 @@
                 font-size: 0.85rem;
                 padding: 0 20px;
             }
-            .sensation {
-                font-size: 1.1rem;
+            .sentence-text {
+                font-size: 14px;
             }
         }
 
@@ -277,24 +240,33 @@
     <!-- 场景 -->
     <div class="scene" id="scene" role="application" aria-label="Exploration area" tabindex="0">
 
-        <!-- SVG 场景 -->
+        <!-- SVG 场景 - 句子只在触摸圈内可见 -->
         <svg class="scene-svg" id="sceneSvg">
-            <!-- 空的SVG，仅用于未来扩展 -->
+            <defs>
+                <!-- 圆形遮罩 - 只显示触摸圈内的内容 -->
+                <radialGradient id="touchGradient">
+                    <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                    <stop offset="50%" stop-color="white" stop-opacity="0.8"/>
+                    <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="white" stop-opacity="0"/>
+                </radialGradient>
+                <mask id="touchMask">
+                    <rect width="100%" height="100%" fill="black"/>
+                    <circle id="maskCircle" r="80" fill="url(#touchGradient)"/>
+                </mask>
+            </defs>
+
+            <!-- 句子层 - 应用遮罩 -->
+            <g id="sentenceLayer" mask="url(#touchMask)"></g>
         </svg>
 
         <!-- 触摸圈 -->
         <div class="touch-circle" id="touchCircle"></div>
 
-        <!-- 感知文本 - 显示2-3个关键词 -->
-        <div class="sensation" id="sensation" role="status" aria-live="polite"></div>
-
-        <!-- 拖拽指示器 -->
-        <div class="drag-indicator" id="dragIndicator"></div>
-
         <!-- 提示文本 -->
         <div class="instruction" id="instruction">
-            Touch the darkness to discover hidden words<br>
-            Drag sentences to the lines by their musical pitch (higher pitch = later position)
+            Touch the darkness to reveal hidden sentences<br>
+            Drag them to the lines by their musical pitch (higher pitch = later position)
         </div>
 
         <!-- 排序区域 - 纵向 -->
@@ -343,7 +315,6 @@
             {
                 id: 1,
                 text: 'Blind people cannot see the world with their eyes.',
-                keywords: ['Blind', 'cannot', 'see'],
                 tone: 'Do',
                 freq: 261.63,
                 order: 1
@@ -351,7 +322,6 @@
             {
                 id: 2,
                 text: 'They mainly rely on touching objects to perceive their shapes and textures.',
-                keywords: ['rely', 'touching', 'perceive'],
                 tone: 'Re',
                 freq: 293.66,
                 order: 2
@@ -359,7 +329,6 @@
             {
                 id: 3,
                 text: 'Over time, their sense of hearing becomes extremely sharp.',
-                keywords: ['hearing', 'becomes', 'sharp'],
                 tone: 'Mi',
                 freq: 329.63,
                 order: 3
@@ -367,7 +336,6 @@
             {
                 id: 4,
                 text: 'This keen hearing helps them distinguish different objects around them.',
-                keywords: ['hearing', 'distinguish', 'objects'],
                 tone: 'Fa',
                 freq: 349.23,
                 order: 4
@@ -375,7 +343,6 @@
             {
                 id: 5,
                 text: 'For example, they can tell the sound of a walking stick tapping the ground from other noises.',
-                keywords: ['walking stick', 'tapping', 'ground'],
                 tone: 'Sol',
                 freq: 392.00,
                 order: 5
@@ -383,7 +350,6 @@
             {
                 id: 6,
                 text: 'These special skills let them live independently in daily life.',
-                keywords: ['skills', 'live', 'independently'],
                 tone: 'La',
                 freq: 440.00,
                 order: 6
@@ -396,26 +362,26 @@
             mouseX: window.innerWidth / 2,
             mouseY: window.innerHeight / 2,
             dragging: null,
-            dragStartPos: null,
-            sentenceAreas: [],
+            dragOffset: { x: 0, y: 0 },
+            sentenceElements: [],
             slotContents: [null, null, null, null, null, null],
             completed: false,
-            lastSoundTime: 0,
-            lastTouchSentence: null
+            lastSoundTime: 0
         };
 
         // ============= DOM =============
         const el = {
             scene: document.getElementById('scene'),
+            sceneSvg: document.getElementById('sceneSvg'),
+            maskCircle: document.getElementById('maskCircle'),
             touchCircle: document.getElementById('touchCircle'),
-            sensation: document.getElementById('sensation'),
-            dragIndicator: document.getElementById('dragIndicator'),
             instruction: document.getElementById('instruction'),
             soundToggle: document.getElementById('soundToggle'),
             live: document.getElementById('liveRegion'),
             endScreen: document.getElementById('endScreen'),
             endMessage: document.getElementById('endMessage'),
-            sortArea: document.getElementById('sortArea')
+            sortArea: document.getElementById('sortArea'),
+            sentenceLayer: document.getElementById('sentenceLayer')
         };
 
         // ============= 音频 =============
@@ -461,8 +427,9 @@
             // 随机打乱句子顺序
             const shuffled = [...sentences].sort(() => Math.random() - 0.5);
 
-            // 创建句子感应区域（完全隐藏）
-            state.sentenceAreas = [];
+            // 清空旧的句子
+            el.sentenceLayer.innerHTML = '';
+            state.sentenceElements = [];
 
             shuffled.forEach((sentence, index) => {
                 // 随机位置（避开中央排序区域）
@@ -475,19 +442,54 @@
                     y > h/2 - 200 && y < h/2 + 200
                 );
 
-                state.sentenceAreas.push({
+                // 创建SVG文本元素 - 支持多行文本
+                const lines = wrapText(sentence.text, 30); // 每行最多30个字符
+                const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                textGroup.dataset.id = sentence.id;
+                textGroup.dataset.freq = sentence.freq;
+
+                lines.forEach((line, lineIndex) => {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.classList.add('sentence-text');
+                    text.setAttribute('x', x);
+                    text.setAttribute('y', y + lineIndex * 20);
+                    text.textContent = line;
+                    textGroup.appendChild(text);
+                });
+
+                el.sentenceLayer.appendChild(textGroup);
+
+                state.sentenceElements.push({
                     id: sentence.id,
                     x: x,
                     y: y,
-                    width: 300,
-                    height: 80,
                     text: sentence.text,
-                    keywords: sentence.keywords,
-                    tone: sentence.tone,
                     freq: sentence.freq,
-                    placed: false
+                    element: textGroup,
+                    placed: false,
+                    width: lines[0].length * 10, // 粗略估计宽度
+                    height: lines.length * 20
                 });
             });
+        }
+
+        // 文本换行辅助函数
+        function wrapText(text, maxChars) {
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(word => {
+                if ((currentLine + word).length <= maxChars) {
+                    currentLine += (currentLine ? ' ' : '') + word;
+                } else {
+                    if (currentLine) lines.push(currentLine);
+                    currentLine = word;
+                }
+            });
+            if (currentLine) lines.push(currentLine);
+
+            return lines;
         }
 
         // ============= 拖拽处理 =============
@@ -499,13 +501,12 @@
             if (!sentence || sentence.placed) return;
 
             state.dragging = sentence;
-            state.dragStartPos = { x, y };
+            state.dragOffset = {
+                x: x - sentence.x,
+                y: y - sentence.y
+            };
 
-            // 显示拖拽指示器
-            el.dragIndicator.textContent = sentence.text;
-            el.dragIndicator.style.left = x + 'px';
-            el.dragIndicator.style.top = (y - 40) + 'px';
-            el.dragIndicator.classList.add('visible');
+            sentence.element.classList.add('dragging');
 
             // 播放音调
             Audio.playTone(sentence.freq);
@@ -517,6 +518,7 @@
 
         function onTouchStart(e) {
             if (e.touches.length > 0) {
+                e.preventDefault();
                 const touch = e.touches[0];
                 startDrag(touch.clientX, touch.clientY);
             }
@@ -527,8 +529,19 @@
 
             if (state.dragging) {
                 e.preventDefault();
-                el.dragIndicator.style.left = e.clientX + 'px';
-                el.dragIndicator.style.top = (e.clientY - 40) + 'px';
+                const newX = e.clientX - state.dragOffset.x;
+                const newY = e.clientY - state.dragOffset.y;
+
+                // 更新句子位置
+                state.dragging.x = newX;
+                state.dragging.y = newY;
+
+                const texts = state.dragging.element.querySelectorAll('text');
+                texts.forEach((text, index) => {
+                    text.setAttribute('x', newX);
+                    text.setAttribute('y', newY + index * 20);
+                });
+
                 checkSlotHighlight(e.clientX, e.clientY);
             }
         }
@@ -541,8 +554,19 @@
 
             if (state.dragging) {
                 e.preventDefault();
-                el.dragIndicator.style.left = touch.clientX + 'px';
-                el.dragIndicator.style.top = (touch.clientY - 40) + 'px';
+                const newX = touch.clientX - state.dragOffset.x;
+                const newY = touch.clientY - state.dragOffset.y;
+
+                // 更新句子位置
+                state.dragging.x = newX;
+                state.dragging.y = newY;
+
+                const texts = state.dragging.element.querySelectorAll('text');
+                texts.forEach((text, index) => {
+                    text.setAttribute('x', newX);
+                    text.setAttribute('y', newY + index * 20);
+                });
+
                 checkSlotHighlight(touch.clientX, touch.clientY);
             }
         }
@@ -559,11 +583,8 @@
                 placeInSlot(state.dragging, slot);
             }
 
+            state.dragging.element.classList.remove('dragging');
             state.dragging = null;
-            state.dragStartPos = null;
-
-            // 隐藏拖拽指示器
-            el.dragIndicator.classList.remove('visible');
 
             // 移除所有高亮
             document.querySelectorAll('.sort-slot').forEach(s => s.classList.remove('highlight'));
@@ -597,10 +618,15 @@
         }
 
         function findSentenceAtPosition(x, y) {
-            for (let area of state.sentenceAreas) {
-                if (x >= area.x - area.width/2 && x <= area.x + area.width/2 &&
-                    y >= area.y - area.height/2 && y <= area.y + area.height/2) {
-                    return area;
+            for (let sentence of state.sentenceElements) {
+                if (sentence.placed) continue;
+
+                const halfWidth = sentence.width / 2;
+                const halfHeight = sentence.height / 2;
+
+                if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
+                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 40) {
+                    return sentence;
                 }
             }
             return null;
@@ -611,9 +637,10 @@
 
             // 如果槽位已有内容，将旧内容恢复为未放置状态
             if (state.slotContents[slotIndex]) {
-                const oldSentence = state.sentenceAreas.find(s => s.id === state.slotContents[slotIndex]);
+                const oldSentence = state.sentenceElements.find(s => s.id === state.slotContents[slotIndex]);
                 if (oldSentence) {
                     oldSentence.placed = false;
+                    oldSentence.element.style.display = '';
                 }
             }
 
@@ -632,6 +659,9 @@
             // 放置句子
             state.slotContents[slotIndex] = sentence.id;
             sentence.placed = true;
+
+            // 隐藏SVG元素
+            sentence.element.style.display = 'none';
 
             // 更新槽位显示
             slot.classList.add('filled');
@@ -673,50 +703,29 @@
             el.touchCircle.style.left = x + 'px';
             el.touchCircle.style.top = y + 'px';
 
-            // 检测触摸内容
-            checkTouch(x, y);
+            // 更新遮罩圆位置
+            el.maskCircle.setAttribute('cx', x);
+            el.maskCircle.setAttribute('cy', y);
+
+            // 检测触摸的句子并播放音调
+            checkTouchSound(x, y);
         }
 
-        function checkTouch(x, y) {
-            if (state.dragging) {
-                // 拖拽时不显示感知文本
-                el.sensation.classList.remove('visible');
-                return;
-            }
+        function checkTouchSound(x, y) {
+            if (state.dragging) return;
 
-            let text = '';
-            let currentSentence = null;
+            // 检测触摸到的句子
+            for (let sentence of state.sentenceElements) {
+                if (sentence.placed) continue;
 
-            // 检测句子区域
-            for (let area of state.sentenceAreas) {
-                if (area.placed) continue; // 已放置的不显示
+                const halfWidth = sentence.width / 2;
+                const halfHeight = sentence.height / 2;
 
-                const dist = Math.sqrt(
-                    Math.pow(x - area.x, 2) +
-                    Math.pow(y - area.y, 2)
-                );
-
-                if (dist < 100) {
-                    // 显示2-3个关键词和音调
-                    text = area.tone + '\n' + area.keywords.join(' / ');
-                    currentSentence = area;
-
-                    // 播放音调（仅当切换到新句子时）
-                    if (state.lastTouchSentence !== area.id) {
-                        Audio.playTone(area.freq);
-                        state.lastTouchSentence = area.id;
-                    }
+                if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
+                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 40) {
+                    Audio.playTone(sentence.freq);
                     break;
                 }
-            }
-
-            // 更新文本
-            if (text) {
-                el.sensation.textContent = text;
-                el.sensation.classList.add('visible');
-            } else {
-                el.sensation.classList.remove('visible');
-                state.lastTouchSentence = null;
             }
         }
 
