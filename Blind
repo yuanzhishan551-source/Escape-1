@@ -753,39 +753,30 @@
             waveformSvg.appendChild(path);
             lineElement.appendChild(waveformSvg);
 
-            // 添加鼠标悬停事件
-            waveformSvg.addEventListener('mouseenter', function() {
-                Audio.playTone(parseFloat(this.dataset.freq));
+            // 添加鼠标悬停事件 - 播放音调
+            waveformSvg.addEventListener('mouseenter', function(e) {
+                // 只有在非拖拽状态时才播放音调
+                if (!state.dragging) {
+                    Audio.playTone(parseFloat(this.dataset.freq));
+                }
             });
 
-            // 添加长按拖拽事件
+            // 添加点击拖拽事件 - 直接提取句子
             waveformSvg.addEventListener('mousedown', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 const slotIdx = parseInt(this.dataset.slot);
-                startLongPress(slotIdx, e.clientX, e.clientY);
-            });
-
-            waveformSvg.addEventListener('mouseup', function(e) {
-                e.preventDefault();
-                cancelLongPress();
-            });
-
-            waveformSvg.addEventListener('mouseleave', function() {
-                cancelLongPress();
+                extractFromSlot(slotIdx, e.clientX, e.clientY);
             });
 
             waveformSvg.addEventListener('touchstart', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 if (e.touches.length > 0) {
                     const touch = e.touches[0];
                     const slotIdx = parseInt(this.dataset.slot);
-                    startLongPress(slotIdx, touch.clientX, touch.clientY);
+                    extractFromSlot(slotIdx, touch.clientX, touch.clientY);
                 }
-            });
-
-            waveformSvg.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                cancelLongPress();
             });
 
             // 播放音调
