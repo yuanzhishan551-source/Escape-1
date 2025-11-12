@@ -447,21 +447,21 @@
                 let validPosition = false;
 
                 do {
-                    x = 150 + Math.random() * (w - 300);
-                    y = 100 + Math.random() * (h - 200);
+                    x = 100 + Math.random() * (w - 200);
+                    y = 80 + Math.random() * (h - 160);
                     attempts++;
 
-                    // 检查是否在中央排序区域
+                    // 检查是否在中央排序区域（缩小中央排除区域）
                     const inCenterArea = (
-                        x > w/2 - 200 && x < w/2 + 200 &&
-                        y > h/2 - 200 && y < h/2 + 200
+                        x > w/2 - 180 && x < w/2 + 180 &&
+                        y > h/2 - 180 && y < h/2 + 180
                     );
 
                     if (inCenterArea) continue;
 
                     // 检查是否与已有句子重叠（留出边距）
                     validPosition = true;
-                    const margin = 80; // 句子之间的最小距离
+                    const margin = 150; // 句子之间的最小距离（增大以防止堆叠）
 
                     for (let existing of state.sentenceElements) {
                         const dx = Math.abs(x - existing.x);
@@ -476,11 +476,11 @@
                     }
 
                     // 如果尝试太多次，降低要求
-                    if (attempts > 100) {
+                    if (attempts > 150) {
                         validPosition = !inCenterArea;
                     }
 
-                } while (!validPosition && attempts < 200);
+                } while (!validPosition && attempts < 300);
 
                 // 创建SVG文本元素
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -755,15 +755,16 @@
 
             let touchedSentence = null;
 
-            // 检测触摸到的句子
+            // 检测触摸到的句子 - 缩小检测范围
             for (let sentence of state.sentenceElements) {
                 if (sentence.placed) continue;
 
-                const halfWidth = sentence.width / 2;
-                const halfHeight = sentence.height / 2;
+                // 缩小检测范围为实际文本大小的60%
+                const halfWidth = sentence.width * 0.3;
+                const halfHeight = sentence.height * 0.3;
 
                 if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
-                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 50) {
+                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight) {
                     touchedSentence = sentence;
                     break;
                 }
