@@ -47,7 +47,7 @@
         /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
         .sentence-text {
             fill: rgba(220, 220, 220, 0.9);
-            font-size: 38px;
+            font-size: 28px;
             font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
             cursor: grab;
             user-select: none;
@@ -275,7 +275,7 @@
                 width: 200px;
             }
             .sentence-text {
-                font-size: 34px;
+                font-size: 24px;
             }
         }
 
@@ -783,7 +783,7 @@
             const texts = state.dragging.element.querySelectorAll('text');
             texts.forEach((text, index) => {
                 text.setAttribute('x', newX);
-                text.setAttribute('y', newY + index * 48);
+                text.setAttribute('y', newY + index * 36);
             });
 
             checkSlotHighlight(x, y);
@@ -821,9 +821,9 @@
 
             shuffled.forEach((sentence, index) => {
                 // 预先计算文本尺寸
-                const lines = wrapText(sentence.text, 20); // 每行最多20个字符（字体更大）
-                const estimatedWidth = lines[0].length * 24; // 更准确的宽度估计（38px字体）
-                const estimatedHeight = lines.length * 48;
+                const lines = wrapText(sentence.text, 25); // 每行最多25个字符（字体较小）
+                const estimatedWidth = lines[0].length * 18; // 更准确的宽度估计（28px字体）
+                const estimatedHeight = lines.length * 36; // 行高36px
 
                 // 随机位置（避开中央排序区域和已有句子）
                 let x, y;
@@ -845,7 +845,7 @@
 
                     // 检查是否与已有句子重叠（留出边距）
                     validPosition = true;
-                    const margin = 150; // 句子之间的最小距离（增大以防止堆叠）
+                    const margin = 250; // 句子之间的最小距离（增大到250以防止堆叠）
 
                     for (let existing of state.sentenceElements) {
                         const dx = Math.abs(x - existing.x);
@@ -860,11 +860,11 @@
                     }
 
                     // 如果尝试太多次，降低要求
-                    if (attempts > 150) {
+                    if (attempts > 200) {
                         validPosition = !inCenterArea;
                     }
 
-                } while (!validPosition && attempts < 300);
+                } while (!validPosition && attempts < 500);
 
                 // 创建SVG文本元素
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -875,7 +875,7 @@
                     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     text.classList.add('sentence-text');
                     text.setAttribute('x', x);
-                    text.setAttribute('y', y + lineIndex * 48);
+                    text.setAttribute('y', y + lineIndex * 36);
                     text.textContent = line;
                     textGroup.appendChild(text);
                 });
@@ -978,7 +978,7 @@
                 const texts = state.dragging.element.querySelectorAll('text');
                 texts.forEach((text, index) => {
                     text.setAttribute('x', newX);
-                    text.setAttribute('y', newY + index * 48);
+                    text.setAttribute('y', newY + index * 36);
                 });
 
                 checkSlotHighlight(e.clientX, e.clientY);
@@ -1003,7 +1003,7 @@
                 const texts = state.dragging.element.querySelectorAll('text');
                 texts.forEach((text, index) => {
                     text.setAttribute('x', newX);
-                    text.setAttribute('y', newY + index * 48);
+                    text.setAttribute('y', newY + index * 36);
                 });
 
                 checkSlotHighlight(touch.clientX, touch.clientY);
@@ -1201,9 +1201,9 @@
             for (let sentence of state.sentenceElements) {
                 if (sentence.placed) continue;
 
-                // 缩小检测范围为实际文本大小的60%
-                const halfWidth = sentence.width * 0.3;
-                const halfHeight = sentence.height * 0.3;
+                // 缩小检测范围为实际文本大小的50%（字体更小）
+                const halfWidth = sentence.width * 0.25;
+                const halfHeight = sentence.height * 0.25;
 
                 if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
                     y >= sentence.y - halfHeight && y <= sentence.y + halfHeight) {
@@ -1273,7 +1273,7 @@
             const texts = sentence.element.querySelectorAll('text');
             texts.forEach((text, index) => {
                 text.setAttribute('x', x);
-                text.setAttribute('y', y + index * 48);
+                text.setAttribute('y', y + index * 36);
             });
 
             // 开始拖拽
