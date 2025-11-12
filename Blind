@@ -7,6 +7,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <style>
         * {
             margin: 0;
@@ -209,6 +213,58 @@
             border-width: 0;
         }
 
+        /* 摄像头视频 - 隐藏 */
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 手部提示图标 */
+        .hand-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 1;
+            transition: opacity 0.5s;
+            user-select: none;
+        }
+
+        .hand-hint.hidden {
+            opacity: 0;
+        }
+
+        /* 手部指示点 */
+        .hand-pointer {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(100, 200, 255, 0.6);
+            border: 2px solid rgba(100, 200, 255, 0.9);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 150;
+            box-shadow: 0 0 15px rgba(100, 200, 255, 0.8);
+            transition: all 0.05s ease;
+        }
+
+        .hand-pointer.pinching {
+            background: rgba(255, 150, 100, 0.6);
+            border-color: rgba(255, 150, 100, 0.9);
+            box-shadow: 0 0 20px rgba(255, 150, 100, 0.8);
+            width: 24px;
+            height: 24px;
+        }
+
         @media (max-width: 768px) {
             .sort-area {
                 gap: 25px;
@@ -288,7 +344,16 @@
         <div class="end-screen" id="endScreen">
             <div class="end-message" id="endMessage"></div>
         </div>
+
+        <!-- 手部提示图标 -->
+        <div class="hand-hint" id="handHint">✋</div>
+
+        <!-- 手部指示点 -->
+        <div class="hand-pointer" id="handPointer" style="display: none;"></div>
     </div>
+
+    <!-- 摄像头视频（隐藏） -->
+    <video id="video" autoplay playsinline></video>
 
     <!-- 声音开关 -->
     <button class="sound-toggle" id="soundToggle" aria-pressed="true">Sound</button>
@@ -357,7 +422,12 @@
             currentTouchedSentence: null,
             waveformFreqs: {}, // 存储每个槽位的频率
             longPressTimer: null, // 长按计时器
-            longPressThreshold: 500 // 长按阈值（毫秒）
+            longPressThreshold: 500, // 长按阈值（毫秒）
+            // 手势识别相关
+            handDetected: false,
+            isPinching: false,
+            pinchPoint: { x: 0, y: 0 },
+            lastPinchState: false
         };
 
         // ============= DOM =============
@@ -371,7 +441,10 @@
             endScreen: document.getElementById('endScreen'),
             endMessage: document.getElementById('endMessage'),
             sortArea: document.getElementById('sortArea'),
-            sentenceLayer: document.getElementById('sentenceLayer')
+            sentenceLayer: document.getElementById('sentenceLayer'),
+            video: document.getElementById('video'),
+            handHint: document.getElementById('handHint'),
+            handPointer: document.getElementById('handPointer')
         };
 
         // ============= 音频 - 钢琴音色 =============
@@ -431,6 +504,174 @@
                 setTimeout(() => this.pianotone(1047, 0.4), 450);
             }
         };
+
+        // ============= 手势识别系统 =============
+        let hands, camera;
+
+        function initHandTracking() {
+            // 初始化 MediaPipe Hands
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandResults);
+
+            // 初始化摄像头
+            camera = new Camera(el.video, {
+                onFrame: async () => {
+                    await hands.send({ image: el.video });
+                },
+                width: 1280,
+                height: 720
+            });
+
+            camera.start();
+        }
+
+        function onHandResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+
+                // 隐藏手部提示
+                if (!state.handDetected) {
+                    state.handDetected = true;
+                    el.handHint.classList.add('hidden');
+                }
+
+                // 获取食指指尖 (8) 和大拇指指尖 (4)
+                const thumbTip = landmarks[4];
+                const indexTip = landmarks[8];
+
+                // 镜像翻转 x 坐标
+                const thumbX = (1 - thumbTip.x) * window.innerWidth;
+                const thumbY = thumbTip.y * window.innerHeight;
+                const indexX = (1 - indexTip.x) * window.innerWidth;
+                const indexY = indexTip.y * window.innerHeight;
+
+                // 计算捏合点（两指中点）
+                const pinchX = (thumbX + indexX) / 2;
+                const pinchY = (thumbY + indexY) / 2;
+
+                // 计算两指距离
+                const distance = Math.sqrt(
+                    Math.pow(thumbX - indexX, 2) +
+                    Math.pow(thumbY - indexY, 2)
+                );
+
+                // 判断是否捏合（距离小于40像素）
+                const isPinching = distance < 40;
+
+                // 更新手部指示点位置
+                el.handPointer.style.display = 'block';
+                el.handPointer.style.left = pinchX + 'px';
+                el.handPointer.style.top = pinchY + 'px';
+
+                if (isPinching) {
+                    el.handPointer.classList.add('pinching');
+                } else {
+                    el.handPointer.classList.remove('pinching');
+                }
+
+                // 更新触摸位置（使用食指指尖）
+                updateTouchPosition(indexX, indexY);
+
+                // 处理捏合动作
+                if (isPinching && !state.lastPinchState) {
+                    // 开始捏合
+                    handlePinchStart(pinchX, pinchY);
+                } else if (isPinching && state.lastPinchState) {
+                    // 持续捏合（拖动）
+                    handlePinchMove(pinchX, pinchY);
+                } else if (!isPinching && state.lastPinchState) {
+                    // 结束捏合
+                    handlePinchEnd(pinchX, pinchY);
+                }
+
+                state.lastPinchState = isPinching;
+                state.isPinching = isPinching;
+                state.pinchPoint = { x: pinchX, y: pinchY };
+
+            } else {
+                // 没有检测到手
+                if (state.handDetected) {
+                    el.handPointer.style.display = 'none';
+                    if (state.dragging) {
+                        // 如果正在拖动，结束拖动
+                        endDrag({ clientX: state.pinchPoint.x, clientY: state.pinchPoint.y });
+                    }
+                }
+                state.handDetected = false;
+                state.lastPinchState = false;
+            }
+        }
+
+        function handlePinchStart(x, y) {
+            if (state.completed) return;
+
+            // 检查是否在句子上
+            const sentence = findSentenceAtPosition(x, y);
+            if (sentence && !sentence.placed) {
+                startDrag(x, y);
+                return;
+            }
+
+            // 检查是否在声纹线上
+            const slots = document.querySelectorAll('.waveform');
+            for (let waveform of slots) {
+                const rect = waveform.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    const slotIdx = parseInt(waveform.dataset.slot);
+                    extractFromSlot(slotIdx, x, y);
+                    return;
+                }
+            }
+        }
+
+        function handlePinchMove(x, y) {
+            if (!state.dragging) return;
+
+            // 更新句子位置
+            const newX = x - state.dragOffset.x;
+            const newY = y - state.dragOffset.y;
+
+            state.dragging.x = newX;
+            state.dragging.y = newY;
+
+            const texts = state.dragging.element.querySelectorAll('text');
+            texts.forEach((text, index) => {
+                text.setAttribute('x', newX);
+                text.setAttribute('y', newY + index * 48);
+            });
+
+            checkSlotHighlight(x, y);
+        }
+
+        function handlePinchEnd(x, y) {
+            if (!state.dragging) return;
+
+            const slot = findSlotAtPosition(x, y);
+
+            if (slot) {
+                placeInSlot(state.dragging, slot);
+            }
+
+            state.dragging.element.classList.remove('dragging');
+            state.dragging = null;
+
+            // 移除所有高亮
+            document.querySelectorAll('.sort-slot').forEach(s => s.classList.remove('highlight'));
+
+            checkCompletion();
+        }
 
         // ============= 初始化场景 =============
         function initScene() {
@@ -818,7 +1059,7 @@
         }
 
         function checkTouchSound(x, y) {
-            if (state.dragging) return;
+            if (state.dragging || state.isPinching) return;
 
             let touchedSentence = null;
 
@@ -961,6 +1202,9 @@
         function init() {
             Audio.init();
             initScene();
+
+            // 初始化手势识别
+            initHandTracking();
 
             el.scene.addEventListener('mousemove', onMouseMove);
             el.scene.addEventListener('touchmove', onTouchMove, { passive: false });
