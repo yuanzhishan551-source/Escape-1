@@ -458,61 +458,72 @@
         el.handCanvas.width = window.innerWidth;
         el.handCanvas.height = window.innerHeight;
 
-        // ============= 音频 - 钢琴音色 =============
+        // ============= 音频 - MP3 音效 =============
         const Audio = {
             ctx: null,
+            sounds: {}, // 存储预加载的音频
+            soundMap: {
+                261.63: '1.C(do).mp3',      // do
+                293.66: '2.D(re).mp3',      // re
+                329.63: '3.E(mi).mp3',      // mi
+                349.23: '4.F(fa).mp3',      // fa
+                392.00: '5.G(sol).mp3',     // sol
+                440.00: '6.A(la).mp3',      // la
+                523: '1.C(do).mp3',         // do (高音，用于成功音效)
+                659: '3.E(mi).mp3',         // mi (用于成功音效)
+                784: '5.G(sol).mp3',        // sol (用于成功音效)
+                1047: '1.C(do).mp3'         // do (高音，用于成功音效)
+            },
             init() {
                 try {
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {}
+                } catch (e) {
+                    console.error('音频上下文初始化失败:', e);
+                }
+                // 预加载所有音频文件
+                this.preloadSounds();
             },
-            // 钢琴音色 - 使用多个谐波叠加
-            pianotone(freq, dur, vol = 0.15) {
-                if (!state.soundOn || !this.ctx) return;
-
-                const now = this.ctx.currentTime;
-
-                // 创建多个谐波来模拟钢琴音色
-                const harmonics = [
-                    { mult: 1, vol: 1.0 },      // 基频
-                    { mult: 2, vol: 0.5 },      // 2次谐波
-                    { mult: 3, vol: 0.25 },     // 3次谐波
-                    { mult: 4, vol: 0.125 },    // 4次谐波
-                    { mult: 5, vol: 0.0625 }    // 5次谐波
+            preloadSounds() {
+                const files = [
+                    '1.C(do).mp3',
+                    '2.D(re).mp3',
+                    '3.E(mi).mp3',
+                    '4.F(fa).mp3',
+                    '5.G(sol).mp3',
+                    '6.A(la).mp3'
                 ];
 
-                harmonics.forEach(h => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-
-                    osc.frequency.value = freq * h.mult;
-                    osc.type = 'sine';
-
-                    // 钢琴的音量包络：快速起音，然后衰减
-                    const attackTime = 0.01;
-                    const decayTime = 0.1;
-                    const sustainLevel = 0.3;
-
-                    gain.gain.setValueAtTime(0, now);
-                    gain.gain.linearRampToValueAtTime(vol * h.vol, now + attackTime);
-                    gain.gain.exponentialRampToValueAtTime(vol * h.vol * sustainLevel, now + attackTime + decayTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-                    osc.start(now);
-                    osc.stop(now + dur);
+                files.forEach(file => {
+                    const audio = new Audio(file);
+                    audio.preload = 'auto';
+                    this.sounds[file] = audio;
                 });
             },
             playTone(freq) {
-                this.pianotone(freq, 0.8);
+                if (!state.soundOn) return;
+
+                const filename = this.soundMap[freq];
+                if (!filename) {
+                    console.warn('未找到频率对应的音频:', freq);
+                    return;
+                }
+
+                const audio = this.sounds[filename];
+                if (audio) {
+                    // 克隆音频以支持快速连续播放
+                    const clone = audio.cloneNode();
+                    clone.volume = 0.5;
+                    clone.play().catch(e => console.error('播放音频失败:', e));
+                } else {
+                    console.warn('音频文件未加载:', filename);
+                }
             },
             success() {
-                this.pianotone(523, 0.3);
-                setTimeout(() => this.pianotone(659, 0.3), 150);
-                setTimeout(() => this.pianotone(784, 0.35), 300);
-                setTimeout(() => this.pianotone(1047, 0.4), 450);
+                // 播放成功音效序列
+                this.playTone(523);
+                setTimeout(() => this.playTone(659), 150);
+                setTimeout(() => this.playTone(784), 300);
+                setTimeout(() => this.playTone(1047), 450);
             }
         };
 
