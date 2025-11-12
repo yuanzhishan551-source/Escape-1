@@ -245,26 +245,26 @@
         }
 
         /* 手部指示点 */
-        .hand-pointer {
+        .finger-pointer {
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background: rgba(100, 200, 255, 0.6);
-            border: 2px solid rgba(100, 200, 255, 0.9);
+            background: rgba(200, 200, 200, 0.7);
+            border: 2px solid rgba(220, 220, 220, 0.9);
             pointer-events: none;
             transform: translate(-50%, -50%);
             z-index: 150;
-            box-shadow: 0 0 15px rgba(100, 200, 255, 0.8);
+            box-shadow: 0 0 10px rgba(200, 200, 200, 0.6);
             transition: all 0.05s ease;
         }
 
-        .hand-pointer.pinching {
-            background: rgba(255, 150, 100, 0.6);
-            border-color: rgba(255, 150, 100, 0.9);
-            box-shadow: 0 0 20px rgba(255, 150, 100, 0.8);
-            width: 24px;
-            height: 24px;
+        .finger-pointer.pinching {
+            background: rgba(255, 180, 120, 0.8);
+            border-color: rgba(255, 200, 150, 0.9);
+            box-shadow: 0 0 15px rgba(255, 180, 120, 0.7);
+            width: 16px;
+            height: 16px;
         }
 
         @media (max-width: 768px) {
@@ -347,8 +347,9 @@
             <div class="end-message" id="endMessage"></div>
         </div>
 
-        <!-- 手部指示点 -->
-        <div class="hand-pointer" id="handPointer" style="display: none;"></div>
+        <!-- 手部指示点 - 拇指和食指 -->
+        <div class="finger-pointer" id="thumbPointer" style="display: none;"></div>
+        <div class="finger-pointer" id="indexPointer" style="display: none;"></div>
     </div>
 
     <!-- 手部骨架画布 -->
@@ -429,7 +430,9 @@
             handDetected: false,
             isPinching: false,
             pinchPoint: { x: 0, y: 0 },
-            lastPinchState: false
+            lastPinchState: false,
+            pinchStartTime: 0,
+            pinchStableFrames: 0
         };
 
         // ============= DOM =============
@@ -446,7 +449,8 @@
             sentenceLayer: document.getElementById('sentenceLayer'),
             video: document.getElementById('video'),
             handCanvas: document.getElementById('handCanvas'),
-            handPointer: document.getElementById('handPointer')
+            thumbPointer: document.getElementById('thumbPointer'),
+            indexPointer: document.getElementById('indexPointer')
         };
 
         // 初始化画布
@@ -531,9 +535,9 @@
 
             if (!landmarks) return;
 
-            // 绘制连接线
-            canvasCtx.strokeStyle = 'rgba(100, 200, 255, 0.6)';
-            canvasCtx.lineWidth = 3;
+            // 绘制连接线 - 灰白色
+            canvasCtx.strokeStyle = 'rgba(200, 200, 200, 0.7)';
+            canvasCtx.lineWidth = 2;
             canvasCtx.lineCap = 'round';
 
             HAND_CONNECTIONS.forEach(([start, end]) => {
@@ -551,48 +555,48 @@
                 canvasCtx.stroke();
             });
 
-            // 绘制关键点
-            canvasCtx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+            // 绘制关键点 - 灰白色
+            canvasCtx.fillStyle = 'rgba(220, 220, 220, 0.8)';
             landmarks.forEach((point) => {
                 const x = mirrored ? (1 - point.x) * el.handCanvas.width : point.x * el.handCanvas.width;
                 const y = point.y * el.handCanvas.height;
 
                 canvasCtx.beginPath();
-                canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+                canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
                 canvasCtx.fill();
             });
         }
 
         // 绘制初始提示手部骨架（静态）
         function drawHintHand() {
-            // 创建一个居中的静态手部姿势
+            // 创建一个居中的静态手部姿势 - 五指并拢伸直
             const centerX = 0.5;
             const centerY = 0.5;
-            const scale = 1.5; // 放大比例
+            const scale = 0.375; // 缩小到1/4
 
-            // 定义一个标准的手部姿势（张开的手）
+            // 定义五指并拢伸直的手部姿势
             const hintPose = [
-                { x: centerX, y: centerY },                                    // 0: 手腕
-                { x: centerX - 0.06 * scale, y: centerY - 0.02 * scale },     // 1: 大拇指
-                { x: centerX - 0.12 * scale, y: centerY - 0.08 * scale },     // 2
-                { x: centerX - 0.16 * scale, y: centerY - 0.14 * scale },     // 3
-                { x: centerX - 0.18 * scale, y: centerY - 0.20 * scale },     // 4: 大拇指尖
-                { x: centerX + 0.02 * scale, y: centerY - 0.08 * scale },     // 5: 食指根
-                { x: centerX + 0.04 * scale, y: centerY - 0.18 * scale },     // 6
-                { x: centerX + 0.05 * scale, y: centerY - 0.28 * scale },     // 7
-                { x: centerX + 0.06 * scale, y: centerY - 0.36 * scale },     // 8: 食指尖
-                { x: centerX + 0.10 * scale, y: centerY - 0.06 * scale },     // 9: 中指根
-                { x: centerX + 0.14 * scale, y: centerY - 0.18 * scale },     // 10
-                { x: centerX + 0.16 * scale, y: centerY - 0.30 * scale },     // 11
-                { x: centerX + 0.17 * scale, y: centerY - 0.40 * scale },     // 12: 中指尖
-                { x: centerX + 0.18 * scale, y: centerY - 0.04 * scale },     // 13: 无名指根
-                { x: centerX + 0.24 * scale, y: centerY - 0.14 * scale },     // 14
-                { x: centerX + 0.27 * scale, y: centerY - 0.24 * scale },     // 15
-                { x: centerX + 0.29 * scale, y: centerY - 0.32 * scale },     // 16: 无名指尖
-                { x: centerX + 0.24 * scale, y: centerY - 0.00 * scale },     // 17: 小指根
-                { x: centerX + 0.30 * scale, y: centerY - 0.08 * scale },     // 18
-                { x: centerX + 0.34 * scale, y: centerY - 0.16 * scale },     // 19
-                { x: centerX + 0.36 * scale, y: centerY - 0.22 * scale }      // 20: 小指尖
+                { x: centerX, y: centerY + 0.05 * scale },                     // 0: 手腕
+                { x: centerX - 0.03 * scale, y: centerY + 0.03 * scale },     // 1: 大拇指根
+                { x: centerX - 0.05 * scale, y: centerY - 0.02 * scale },     // 2
+                { x: centerX - 0.06 * scale, y: centerY - 0.08 * scale },     // 3
+                { x: centerX - 0.07 * scale, y: centerY - 0.14 * scale },     // 4: 大拇指尖
+                { x: centerX - 0.01 * scale, y: centerY },                    // 5: 食指根
+                { x: centerX - 0.01 * scale, y: centerY - 0.10 * scale },     // 6
+                { x: centerX - 0.01 * scale, y: centerY - 0.20 * scale },     // 7
+                { x: centerX - 0.01 * scale, y: centerY - 0.30 * scale },     // 8: 食指尖
+                { x: centerX + 0.01 * scale, y: centerY },                    // 9: 中指根
+                { x: centerX + 0.01 * scale, y: centerY - 0.11 * scale },     // 10
+                { x: centerX + 0.01 * scale, y: centerY - 0.22 * scale },     // 11
+                { x: centerX + 0.01 * scale, y: centerY - 0.33 * scale },     // 12: 中指尖
+                { x: centerX + 0.03 * scale, y: centerY },                    // 13: 无名指根
+                { x: centerX + 0.03 * scale, y: centerY - 0.10 * scale },     // 14
+                { x: centerX + 0.03 * scale, y: centerY - 0.20 * scale },     // 15
+                { x: centerX + 0.03 * scale, y: centerY - 0.29 * scale },     // 16: 无名指尖
+                { x: centerX + 0.05 * scale, y: centerY + 0.01 * scale },     // 17: 小指根
+                { x: centerX + 0.05 * scale, y: centerY - 0.08 * scale },     // 18
+                { x: centerX + 0.05 * scale, y: centerY - 0.17 * scale },     // 19
+                { x: centerX + 0.05 * scale, y: centerY - 0.25 * scale }      // 20: 小指尖
             ];
 
             drawHand(hintPose, false);
@@ -661,18 +665,36 @@
                     Math.pow(thumbY - indexY, 2)
                 );
 
-                // 判断是否捏合（距离小于40像素）
-                const isPinching = distance < 40;
+                // 判断是否捏合（距离小于60像素）
+                const isPinchingRaw = distance < 60;
 
-                // 更新手部指示点位置
-                el.handPointer.style.display = 'block';
-                el.handPointer.style.left = pinchX + 'px';
-                el.handPointer.style.top = pinchY + 'px';
+                // 捏合稳定性检测 - 需要连续2帧才确认捏合
+                let isPinching = isPinchingRaw;
+                if (isPinchingRaw) {
+                    state.pinchStableFrames++;
+                    if (state.pinchStableFrames < 2) {
+                        isPinching = state.lastPinchState; // 保持上一帧状态
+                    }
+                } else {
+                    state.pinchStableFrames = 0;
+                }
+
+                // 更新拇指指示点位置
+                el.thumbPointer.style.display = 'block';
+                el.thumbPointer.style.left = thumbX + 'px';
+                el.thumbPointer.style.top = thumbY + 'px';
+
+                // 更新食指指示点位置
+                el.indexPointer.style.display = 'block';
+                el.indexPointer.style.left = indexX + 'px';
+                el.indexPointer.style.top = indexY + 'px';
 
                 if (isPinching) {
-                    el.handPointer.classList.add('pinching');
+                    el.thumbPointer.classList.add('pinching');
+                    el.indexPointer.classList.add('pinching');
                 } else {
-                    el.handPointer.classList.remove('pinching');
+                    el.thumbPointer.classList.remove('pinching');
+                    el.indexPointer.classList.remove('pinching');
                 }
 
                 // 更新触摸位置（使用食指指尖）
@@ -697,7 +719,8 @@
             } else {
                 // 没有检测到手
                 if (state.handDetected) {
-                    el.handPointer.style.display = 'none';
+                    el.thumbPointer.style.display = 'none';
+                    el.indexPointer.style.display = 'none';
                     if (state.dragging) {
                         // 如果正在拖动，结束拖动
                         endDrag({ clientX: state.pinchPoint.x, clientY: state.pinchPoint.y });
@@ -709,6 +732,7 @@
                 }
                 state.handDetected = false;
                 state.lastPinchState = false;
+                state.pinchStableFrames = 0;
             }
         }
 
