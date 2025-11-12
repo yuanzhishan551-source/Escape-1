@@ -132,21 +132,6 @@
             pointer-events: none;
         }
 
-        /* 提示文本 */
-        .instruction {
-            position: absolute;
-            top: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(180, 180, 180, 0.6);
-            font-size: 0.95rem;
-            text-align: center;
-            z-index: 50;
-            max-width: 600px;
-            line-height: 1.8;
-            font-weight: 300;
-        }
-
         /* 声音开关 */
         .sound-toggle {
             position: absolute;
@@ -222,10 +207,6 @@
             .slot-line {
                 width: 200px;
             }
-            .instruction {
-                font-size: 0.85rem;
-                padding: 0 20px;
-            }
             .sentence-text {
                 font-size: 34px;
             }
@@ -265,12 +246,6 @@
 
         <!-- 触摸圈 -->
         <div class="touch-circle" id="touchCircle"></div>
-
-        <!-- 提示文本 -->
-        <div class="instruction" id="instruction">
-            Touch the darkness to reveal hidden sentences<br>
-            Drag them to the lines by their musical pitch (higher pitch = later position)
-        </div>
 
         <!-- 排序区域 - 纵向 -->
         <div class="sort-area" id="sortArea">
@@ -379,7 +354,6 @@
             sceneSvg: document.getElementById('sceneSvg'),
             maskCircle: document.getElementById('maskCircle'),
             touchCircle: document.getElementById('touchCircle'),
-            instruction: document.getElementById('instruction'),
             soundToggle: document.getElementById('soundToggle'),
             live: document.getElementById('liveRegion'),
             endScreen: document.getElementById('endScreen'),
@@ -812,7 +786,6 @@
 
         // ============= 结束画面 =============
         function showEnd() {
-            el.instruction.style.opacity = 0;
             el.endMessage.innerHTML = 'You understood the world of the blind<br><br>In darkness, touch and hearing<br>are their ways to perceive the world';
             el.endScreen.classList.add('visible');
         }
