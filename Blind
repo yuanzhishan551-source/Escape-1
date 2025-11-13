@@ -432,7 +432,8 @@
             pinchPoint: { x: 0, y: 0 },
             lastPinchState: false,
             pinchStartTime: 0,
-            pinchStableFrames: 0
+            pinchStableFrames: 0,
+            currentTouchedWaveform: null // 当前触摸的声纹线
         };
 
         // ============= DOM =============
@@ -745,6 +746,7 @@
                 state.handDetected = false;
                 state.lastPinchState = false;
                 state.pinchStableFrames = 0;
+                state.currentTouchedWaveform = null;
             }
         }
 
@@ -1219,6 +1221,39 @@
             } else if (!touchedSentence) {
                 // 离开所有句子时，重置当前触摸的句子
                 state.currentTouchedSentence = null;
+            }
+
+            // 检测触摸到的声纹线
+            if (!state.isPinching) {
+                checkWaveformTouch(x, y);
+            }
+        }
+
+        function checkWaveformTouch(x, y) {
+            let touchedWaveform = null;
+
+            // 检测所有声纹线
+            const waveforms = document.querySelectorAll('.waveform');
+            for (let waveform of waveforms) {
+                const rect = waveform.getBoundingClientRect();
+                // 扩大检测区域，更容易触发
+                if (x >= rect.left - 10 && x <= rect.right + 10 &&
+                    y >= rect.top - 10 && y <= rect.bottom + 10) {
+                    touchedWaveform = waveform.dataset.slot;
+                    break;
+                }
+            }
+
+            // 只有当触摸到新声纹线时才播放音效
+            if (touchedWaveform && touchedWaveform !== state.currentTouchedWaveform) {
+                const freq = state.waveformFreqs[parseInt(touchedWaveform)];
+                if (freq) {
+                    Audio.playTone(freq);
+                }
+                state.currentTouchedWaveform = touchedWaveform;
+            } else if (!touchedWaveform) {
+                // 离开所有声纹线时，重置
+                state.currentTouchedWaveform = null;
             }
         }
 
