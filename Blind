@@ -270,11 +270,11 @@
         .end-message {
             text-align: center;
             color: rgba(220, 220, 220, 0.9);
-            font-size: 1.4rem;
-            line-height: 2.2;
-            max-width: 600px;
+            font-size: 56px;
+            line-height: 1.5;
+            max-width: 800px;
             padding: 40px;
-            font-weight: 300;
+            font-weight: 400;
         }
 
         @media (max-width: 768px) {
@@ -1344,7 +1344,7 @@
 
         // ============= 结束画面 =============
         function showEnd() {
-            el.endMessage.innerHTML = 'You understood the world of the blind<br><br>In darkness, touch and hearing<br>are their ways to perceive the world';
+            el.endMessage.innerHTML = 'You\'re back home.';
             el.endScreen.classList.add('visible');
         }
 
