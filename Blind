@@ -370,13 +370,13 @@
                 id: 1,
                 initialTexts: [
                     { text: 'You leave the subway. Traffic is loud.', tone: 'do', freq: 261.63 },
-                    { text: 'You hear a familiar bus engine ahead. At the curb, you should:', tone: 're', freq: 293.66 },
+                    { text: 'You hear a familiar bus engine. At the curb, you should:', tone: 're', freq: 293.66 },
                     { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
                     { text: 'You follow the engine\'s direction and move safely.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
                 ],
                 optionTexts: [
-                    { text: 'Step forward.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
-                    { text: 'Wait.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Step forward.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Wait.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
                     { text: 'Turn right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
                 ]
             },
