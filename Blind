@@ -19,29 +19,112 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
             background: #000;
             color: #666;
-            min-height: 100vh;
             overflow: hidden;
             cursor: none;
         }
 
-        /* 场景容器 */
-        .scene {
+        /* 页面容器 */
+        .pages-container {
+            width: 100vw;
+            height: 100vh;
+            overflow-y: hidden;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        /* 单个页面 */
+        .page {
             width: 100vw;
             height: 100vh;
             position: relative;
             background: #000;
+            scroll-snap-align: start;
+            padding: 80px 100px;
         }
 
-        /* SVG 场景层 */
+        /* 页面内容容器 */
+        .page-content {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 左对齐（奇数页）*/
+        .page.align-left .initial-text-container {
+            text-align: left;
+            padding-left: 50px;
+        }
+
+        /* 右对齐（偶数页）*/
+        .page.align-right .initial-text-container {
+            text-align: right;
+            padding-right: 50px;
+        }
+
+        /* 初始文字容器 */
+        .initial-text-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* 初始文字 */
+        .initial-text {
+            font-size: 28px;
+            color: rgba(220, 220, 220, 0.9);
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease;
+        }
+
+        .initial-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .initial-text.blurred {
+            filter: blur(3px);
+            opacity: 0.5;
+        }
+
+        /* 空槽位线 */
+        .slot-line-inline {
+            display: inline-block;
+            width: 200px;
+            height: 1px;
+            background: rgba(180, 180, 180, 0.6);
+            vertical-align: middle;
+            position: relative;
+            margin: 0 10px;
+        }
+
+        .slot-line-inline.filled {
+            background: none;
+        }
+
+        .slot-line-inline .filled-text {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 28px;
+            color: rgba(120, 120, 120, 0.8);
+            white-space: nowrap;
+        }
+
+        /* SVG 场景层 - 选项文字 */
         .scene-svg {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            pointer-events: none;
+            z-index: 5;
         }
 
         /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
@@ -51,15 +134,16 @@
             font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
             cursor: grab;
             user-select: none;
+            pointer-events: all;
         }
 
         .sentence-text.dragging {
             cursor: grabbing;
         }
 
-        /* 触摸圈 - 只保留中心点 */
+        /* 触摸圈 */
         .touch-circle {
-            position: absolute;
+            position: fixed;
             width: 8px;
             height: 8px;
             pointer-events: none;
@@ -80,74 +164,62 @@
             box-shadow: 0 0 8px rgba(200, 200, 200, 0.4);
         }
 
-        /* 排序区域 - 纵向 */
-        .sort-area {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            flex-direction: column;
-            gap: 35px;
-            z-index: 5;
-            pointer-events: none;
-        }
-
-        .sort-slot {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            position: relative;
-            height: 40px;
-        }
-
-        .slot-number {
-            font-size: 1.2rem;
-            color: rgba(120, 120, 120, 0.5);
-            font-weight: 300;
-            width: 20px;
-            text-align: right;
-            display: none; /* 隐藏数字 */
-        }
-
-        .slot-line {
-            width: 250px;
-            height: 1px;
-            background: rgba(180, 180, 180, 0.6);
-            position: relative;
-            transition: background 0.3s;
-        }
-
-        .sort-slot.highlight .slot-line {
-            background: rgba(150, 150, 150, 0.7);
-            box-shadow: 0 0 8px rgba(150, 150, 150, 0.3);
-        }
-
-        .sort-slot.filled .slot-line {
-            background: rgba(220, 220, 220, 0.9);
-        }
-
-        /* 声纹线 */
-        .waveform {
-            position: absolute;
+        /* 手部骨架画布 */
+        #handCanvas {
+            position: fixed;
+            top: 0;
             left: 0;
-            top: -15px;
-            height: 30px;
             width: 100%;
-            pointer-events: all;
-            cursor: pointer;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        .waveform-line {
-            stroke: rgba(220, 220, 220, 0.7);
-            stroke-width: 1.5;
-            fill: none;
-            stroke-linecap: round;
+        #handCanvas.hint-mode {
+            opacity: 0.3;
+        }
+
+        #handCanvas.tracking-mode {
+            opacity: 0.8;
+        }
+
+        /* 手部指示点 */
+        .finger-pointer {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(200, 200, 200, 0.7);
+            border: 2px solid rgba(220, 220, 220, 0.9);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 150;
+            box-shadow: 0 0 10px rgba(200, 200, 200, 0.6);
+            transition: all 0.05s ease;
+        }
+
+        .finger-pointer.pinching {
+            background: rgba(255, 180, 120, 0.8);
+            border-color: rgba(255, 200, 150, 0.9);
+            box-shadow: 0 0 15px rgba(255, 180, 120, 0.7);
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 摄像头视频 - 隐藏 */
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
         }
 
         /* 声音开关 */
         .sound-toggle {
-            position: absolute;
+            position: fixed;
             top: 20px;
             right: 20px;
             background: none;
@@ -170,7 +242,7 @@
 
         /* 结束画面 */
         .end-screen {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -200,157 +272,98 @@
             font-weight: 300;
         }
 
-        /* 屏幕阅读器 */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-        }
-
-        /* 摄像头视频 - 隐藏 */
-        #video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        /* 手部骨架画布 */
-        #handCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        /* 初始手部提示骨架 */
-        #handCanvas.hint-mode {
-            opacity: 0.3;
-        }
-
-        #handCanvas.tracking-mode {
-            opacity: 0.8;
-        }
-
-        /* 手部指示点 */
-        .finger-pointer {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: rgba(200, 200, 200, 0.7);
-            border: 2px solid rgba(220, 220, 220, 0.9);
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            z-index: 150;
-            box-shadow: 0 0 10px rgba(200, 200, 200, 0.6);
-            transition: all 0.05s ease;
-        }
-
-        .finger-pointer.pinching {
-            background: rgba(255, 180, 120, 0.8);
-            border-color: rgba(255, 200, 150, 0.9);
-            box-shadow: 0 0 15px rgba(255, 180, 120, 0.7);
-            width: 16px;
-            height: 16px;
-        }
-
         @media (max-width: 768px) {
-            .sort-area {
-                gap: 25px;
+            .page {
+                padding: 60px 40px;
             }
-            .slot-line {
-                width: 200px;
+            .initial-text {
+                font-size: 24px;
             }
             .sentence-text {
                 font-size: 24px;
             }
         }
-
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
     </style>
 </head>
 <body>
-    <!-- 场景 -->
-    <div class="scene" id="scene" role="application" aria-label="Exploration area" tabindex="0">
-
-        <!-- SVG 场景 - 句子只在触摸圈内可见 -->
-        <svg class="scene-svg" id="sceneSvg">
-            <defs>
-                <!-- 圆形遮罩 - 只显示触摸圈内的内容 -->
-                <radialGradient id="touchGradient">
-                    <stop offset="0%" stop-color="white" stop-opacity="1"/>
-                    <stop offset="50%" stop-color="white" stop-opacity="0.8"/>
-                    <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
-                    <stop offset="100%" stop-color="white" stop-opacity="0"/>
-                </radialGradient>
-                <mask id="touchMask">
-                    <rect width="100%" height="100%" fill="black"/>
-                    <circle id="maskCircle" r="50" fill="url(#touchGradient)"/>
-                </mask>
-            </defs>
-
-            <!-- 句子层 - 应用遮罩 -->
-            <g id="sentenceLayer" mask="url(#touchMask)"></g>
-        </svg>
-
-        <!-- 触摸圈 -->
-        <div class="touch-circle" id="touchCircle"></div>
-
-        <!-- 排序区域 - 纵向 -->
-        <div class="sort-area" id="sortArea">
-            <div class="sort-slot" data-slot="1">
-                <span class="slot-number">1.</span>
-                <div class="slot-line"></div>
-            </div>
-            <div class="sort-slot" data-slot="2">
-                <span class="slot-number">2.</span>
-                <div class="slot-line"></div>
-            </div>
-            <div class="sort-slot" data-slot="3">
-                <span class="slot-number">3.</span>
-                <div class="slot-line"></div>
-            </div>
-            <div class="sort-slot" data-slot="4">
-                <span class="slot-number">4.</span>
-                <div class="slot-line"></div>
-            </div>
-            <div class="sort-slot" data-slot="5">
-                <span class="slot-number">5.</span>
-                <div class="slot-line"></div>
-            </div>
-            <div class="sort-slot" data-slot="6">
-                <span class="slot-number">6.</span>
-                <div class="slot-line"></div>
+    <!-- 页面容器 -->
+    <div class="pages-container" id="pagesContainer">
+        <!-- 页面1: 导航场景 -->
+        <div class="page align-left" id="page1" data-page="1">
+            <div class="page-content">
+                <div class="initial-text-container" id="initialText1">
+                    <!-- 初始文字将通过JavaScript动态添加 -->
+                </div>
+                <!-- SVG层用于选项文字 -->
+                <svg class="scene-svg" id="sceneSvg1">
+                    <defs>
+                        <radialGradient id="touchGradient1">
+                            <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                            <stop offset="50%" stop-color="white" stop-opacity="0.8"/>
+                            <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="white" stop-opacity="0"/>
+                        </radialGradient>
+                        <mask id="touchMask1">
+                            <rect width="100%" height="100%" fill="black"/>
+                            <circle id="maskCircle1" r="50" fill="url(#touchGradient1)"/>
+                        </mask>
+                    </defs>
+                    <g id="sentenceLayer1" mask="url(#touchMask1)"></g>
+                </svg>
             </div>
         </div>
 
-        <!-- 结束画面 -->
-        <div class="end-screen" id="endScreen">
-            <div class="end-message" id="endMessage"></div>
+        <!-- 页面2: 第二个场景 -->
+        <div class="page align-right" id="page2" data-page="2">
+            <div class="page-content">
+                <div class="initial-text-container" id="initialText2">
+                    <!-- 页面2内容 -->
+                </div>
+                <svg class="scene-svg" id="sceneSvg2">
+                    <defs>
+                        <radialGradient id="touchGradient2">
+                            <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                            <stop offset="50%" stop-color="white" stop-opacity="0.8"/>
+                            <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="white" stop-opacity="0"/>
+                        </radialGradient>
+                        <mask id="touchMask2">
+                            <rect width="100%" height="100%" fill="black"/>
+                            <circle id="maskCircle2" r="50" fill="url(#touchGradient2)"/>
+                        </mask>
+                    </defs>
+                    <g id="sentenceLayer2" mask="url(#touchMask2)"></g>
+                </svg>
+            </div>
         </div>
 
-        <!-- 手部指示点 - 拇指和食指 -->
-        <div class="finger-pointer" id="thumbPointer" style="display: none;"></div>
-        <div class="finger-pointer" id="indexPointer" style="display: none;"></div>
+        <!-- 页面3: 第三个场景 -->
+        <div class="page align-left" id="page3" data-page="3">
+            <div class="page-content">
+                <div class="initial-text-container" id="initialText3">
+                    <!-- 页面3内容 -->
+                </div>
+                <svg class="scene-svg" id="sceneSvg3">
+                    <defs>
+                        <radialGradient id="touchGradient3">
+                            <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                            <stop offset="50%" stop-color="white" stop-opacity="0.8"/>
+                            <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="white" stop-opacity="0"/>
+                        </radialGradient>
+                        <mask id="touchMask3">
+                            <rect width="100%" height="100%" fill="black"/>
+                            <circle id="maskCircle3" r="50" fill="url(#touchGradient3)"/>
+                        </mask>
+                    </defs>
+                    <g id="sentenceLayer3" mask="url(#touchMask3)"></g>
+                </svg>
+            </div>
+        </div>
     </div>
+
+    <!-- 触摸圈 -->
+    <div class="touch-circle" id="touchCircle"></div>
 
     <!-- 手部骨架画布 -->
     <canvas id="handCanvas" class="hint-mode"></canvas>
@@ -361,93 +374,94 @@
     <!-- 声音开关 -->
     <button class="sound-toggle" id="soundToggle" aria-pressed="true">Sound</button>
 
-    <!-- 屏幕阅读器 -->
-    <div class="sr-only" role="status" aria-live="polite" id="liveRegion"></div>
+    <!-- 手部指示点 -->
+    <div class="finger-pointer" id="thumbPointer" style="display: none;"></div>
+    <div class="finger-pointer" id="indexPointer" style="display: none;"></div>
+
+    <!-- 结束画面 -->
+    <div class="end-screen" id="endScreen">
+        <div class="end-message" id="endMessage"></div>
+    </div>
 
     <script>
-        // ============= 句子数据 =============
-        const sentences = [
+        // ============= 页面数据 =============
+        const pagesData = [
+            // 页面1: 导航场景
             {
                 id: 1,
-                text: 'Blind people cannot see the world with their eyes.',
-                tone: 'Do',
-                freq: 261.63,
-                order: 1
+                initialTexts: [
+                    { text: 'You are Your Way Home.', tone: 'do', freq: 261.63 },
+                    { text: 'At the next intersection, you should:', tone: 're', freq: 293.66 },
+                    { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
+                    { text: 'Based on the sound, you are safely crossed this intersection.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
+                ],
+                optionTexts: [
+                    { text: 'Go straight.', correctSlot: null },
+                    { text: 'Turn Left.', correctSlot: 'slot1' },
+                    { text: 'Turn Right.', correctSlot: null }
+                ]
             },
+            // 页面2: 购物场景
             {
                 id: 2,
-                text: 'They mainly rely on touching objects to perceive their shapes and textures.',
-                tone: 'Re',
-                freq: 293.66,
-                order: 2
+                initialTexts: [
+                    { text: 'You are at the supermarket.', tone: 'sol', freq: 392.00 },
+                    { text: 'You need to find:', tone: 'la', freq: 440.00 },
+                    { text: '__SLOT__', tone: 'do', freq: 523.26, slotId: 'slot2' },
+                    { text: 'You successfully found the item by its sound.', tone: 're', freq: 587.33, showAfterSlot: 'slot2' }
+                ],
+                optionTexts: [
+                    { text: 'The milk section.', correctSlot: 'slot2' },
+                    { text: 'The bread aisle.', correctSlot: null },
+                    { text: 'The checkout counter.', correctSlot: null }
+                ]
             },
+            // 页面3: 回家场景
             {
                 id: 3,
-                text: 'Over time, their sense of hearing becomes extremely sharp.',
-                tone: 'Mi',
-                freq: 329.63,
-                order: 3
-            },
-            {
-                id: 4,
-                text: 'This keen hearing helps them distinguish different objects around them.',
-                tone: 'Fa',
-                freq: 349.23,
-                order: 4
-            },
-            {
-                id: 5,
-                text: 'For example, they can tell the sound of a walking stick tapping the ground from other noises.',
-                tone: 'Sol',
-                freq: 392.00,
-                order: 5
-            },
-            {
-                id: 6,
-                text: 'These special skills let them live independently in daily life.',
-                tone: 'La',
-                freq: 440.00,
-                order: 6
+                initialTexts: [
+                    { text: 'You arrive at your building.', tone: 'mi', freq: 659.25 },
+                    { text: 'To enter, you should:', tone: 'fa', freq: 698.46 },
+                    { text: '__SLOT__', tone: 'sol', freq: 783.99, slotId: 'slot3' },
+                    { text: 'You made it home safely. Welcome home.', tone: 'la', freq: 880.00, showAfterSlot: 'slot3' }
+                ],
+                optionTexts: [
+                    { text: 'Wait for someone.', correctSlot: null },
+                    { text: 'Use your key card.', correctSlot: 'slot3' },
+                    { text: 'Ring the doorbell.', correctSlot: null }
+                ]
             }
         ];
 
         // ============= 状态 =============
         const state = {
             soundOn: true,
+            currentPage: 1,
             mouseX: window.innerWidth / 2,
             mouseY: window.innerHeight / 2,
             dragging: null,
             dragOffset: { x: 0, y: 0 },
-            sentenceElements: [],
-            slotContents: [null, null, null, null, null, null],
-            completed: false,
-            lastSoundTime: 0,
-            currentTouchedSentence: null,
-            waveformFreqs: {}, // 存储每个槽位的频率
-            longPressTimer: null, // 长按计时器
-            longPressThreshold: 500, // 长按阈值（毫秒）
             // 手势识别相关
             handDetected: false,
             isPinching: false,
             pinchPoint: { x: 0, y: 0 },
             lastPinchState: false,
-            pinchStartTime: 0,
             pinchStableFrames: 0,
-            currentTouchedWaveform: null // 当前触摸的声纹线
+            // 页面状态
+            pageStates: {
+                1: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] },
+                2: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] },
+                3: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] }
+            }
         };
 
         // ============= DOM =============
         const el = {
-            scene: document.getElementById('scene'),
-            sceneSvg: document.getElementById('sceneSvg'),
-            maskCircle: document.getElementById('maskCircle'),
+            pagesContainer: document.getElementById('pagesContainer'),
             touchCircle: document.getElementById('touchCircle'),
             soundToggle: document.getElementById('soundToggle'),
-            live: document.getElementById('liveRegion'),
             endScreen: document.getElementById('endScreen'),
             endMessage: document.getElementById('endMessage'),
-            sortArea: document.getElementById('sortArea'),
-            sentenceLayer: document.getElementById('sentenceLayer'),
             video: document.getElementById('video'),
             handCanvas: document.getElementById('handCanvas'),
             thumbPointer: document.getElementById('thumbPointer'),
@@ -461,27 +475,22 @@
 
         // ============= 音频 - MP3 音效 =============
         const Audio = {
-            ctx: null,
-            sounds: {}, // 存储预加载的音频
+            sounds: {},
             soundMap: {
-                261.63: '1.C(do).mp3',      // do
-                293.66: '2.D(re).mp3',      // re
-                329.63: '3.E(mi).mp3',      // mi
-                349.23: '4.F(fa).mp3',      // fa
-                392.00: '5.G(sol).mp3',     // sol
-                440.00: '6.A(la).mp3',      // la
-                523: '1.C(do).mp3',         // do (高音，用于成功音效)
-                659: '3.E(mi).mp3',         // mi (用于成功音效)
-                784: '5.G(sol).mp3',        // sol (用于成功音效)
-                1047: '1.C(do).mp3'         // do (高音，用于成功音效)
+                261.63: '1.C(do).mp3',
+                293.66: '2.D(re).mp3',
+                329.63: '3.E(mi).mp3',
+                349.23: '4.F(fa).mp3',
+                392.00: '5.G(sol).mp3',
+                440.00: '6.A(la).mp3',
+                523.26: '1.C(do).mp3',
+                587.33: '2.D(re).mp3',
+                659.25: '3.E(mi).mp3',
+                698.46: '4.F(fa).mp3',
+                783.99: '5.G(sol).mp3',
+                880.00: '6.A(la).mp3'
             },
             init() {
-                try {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    console.error('音频上下文初始化失败:', e);
-                }
-                // 预加载所有音频文件
                 this.preloadSounds();
             },
             preloadSounds() {
@@ -512,7 +521,6 @@
 
                 const audio = this.sounds[filename];
                 if (audio) {
-                    // 克隆音频以支持快速连续播放
                     const clone = audio.cloneNode();
                     clone.volume = 0.5;
                     clone.play().catch(e => console.error('播放音频失败:', e));
@@ -521,34 +529,30 @@
                 }
             },
             success() {
-                // 播放成功音效序列
-                this.playTone(523);
-                setTimeout(() => this.playTone(659), 150);
-                setTimeout(() => this.playTone(784), 300);
-                setTimeout(() => this.playTone(1047), 450);
+                this.playTone(523.26);
+                setTimeout(() => this.playTone(659.25), 150);
+                setTimeout(() => this.playTone(783.99), 300);
+                setTimeout(() => this.playTone(1046.50), 450);
             }
         };
 
         // ============= 手势识别系统 =============
         let hands, camera;
 
-        // MediaPipe Hand Connections (手部骨架连接)
         const HAND_CONNECTIONS = [
-            [0, 1], [1, 2], [2, 3], [3, 4],           // 大拇指
-            [0, 5], [5, 6], [6, 7], [7, 8],           // 食指
-            [0, 9], [9, 10], [10, 11], [11, 12],      // 中指
-            [0, 13], [13, 14], [14, 15], [15, 16],    // 无名指
-            [0, 17], [17, 18], [18, 19], [19, 20],    // 小指
-            [5, 9], [9, 13], [13, 17]                  // 掌心连接
+            [0, 1], [1, 2], [2, 3], [3, 4],
+            [0, 5], [5, 6], [6, 7], [7, 8],
+            [0, 9], [9, 10], [10, 11], [11, 12],
+            [0, 13], [13, 14], [14, 15], [15, 16],
+            [0, 17], [17, 18], [18, 19], [19, 20],
+            [5, 9], [9, 13], [13, 17]
         ];
 
-        // 绘制手部骨架
         function drawHand(landmarks, mirrored = true) {
             canvasCtx.clearRect(0, 0, el.handCanvas.width, el.handCanvas.height);
 
             if (!landmarks) return;
 
-            // 绘制连接线 - 灰白色
             canvasCtx.strokeStyle = 'rgba(200, 200, 200, 0.7)';
             canvasCtx.lineWidth = 2;
             canvasCtx.lineCap = 'round';
@@ -568,7 +572,6 @@
                 canvasCtx.stroke();
             });
 
-            // 绘制关键点 - 灰白色
             canvasCtx.fillStyle = 'rgba(220, 220, 220, 0.8)';
             landmarks.forEach((point) => {
                 const x = mirrored ? (1 - point.x) * el.handCanvas.width : point.x * el.handCanvas.width;
@@ -580,43 +583,39 @@
             });
         }
 
-        // 绘制初始提示手部骨架（静态）
         function drawHintHand() {
-            // 创建一个居中的静态手部姿势 - 五指并拢伸直
-            const centerX = 0.75; // 移到右边，在平行线与屏幕边缘的中间
+            const centerX = 0.75;
             const centerY = 0.5;
-            const scale = 0.375; // 缩小到1/4
+            const scale = 0.375;
 
-            // 定义五指并拢伸直的手部姿势
             const hintPose = [
-                { x: centerX, y: centerY + 0.05 * scale },                     // 0: 手腕
-                { x: centerX - 0.03 * scale, y: centerY + 0.03 * scale },     // 1: 大拇指根
-                { x: centerX - 0.05 * scale, y: centerY - 0.02 * scale },     // 2
-                { x: centerX - 0.06 * scale, y: centerY - 0.08 * scale },     // 3
-                { x: centerX - 0.07 * scale, y: centerY - 0.14 * scale },     // 4: 大拇指尖
-                { x: centerX - 0.01 * scale, y: centerY },                    // 5: 食指根
-                { x: centerX - 0.01 * scale, y: centerY - 0.10 * scale },     // 6
-                { x: centerX - 0.01 * scale, y: centerY - 0.20 * scale },     // 7
-                { x: centerX - 0.01 * scale, y: centerY - 0.30 * scale },     // 8: 食指尖
-                { x: centerX + 0.01 * scale, y: centerY },                    // 9: 中指根
-                { x: centerX + 0.01 * scale, y: centerY - 0.11 * scale },     // 10
-                { x: centerX + 0.01 * scale, y: centerY - 0.22 * scale },     // 11
-                { x: centerX + 0.01 * scale, y: centerY - 0.33 * scale },     // 12: 中指尖
-                { x: centerX + 0.03 * scale, y: centerY },                    // 13: 无名指根
-                { x: centerX + 0.03 * scale, y: centerY - 0.10 * scale },     // 14
-                { x: centerX + 0.03 * scale, y: centerY - 0.20 * scale },     // 15
-                { x: centerX + 0.03 * scale, y: centerY - 0.29 * scale },     // 16: 无名指尖
-                { x: centerX + 0.05 * scale, y: centerY + 0.01 * scale },     // 17: 小指根
-                { x: centerX + 0.05 * scale, y: centerY - 0.08 * scale },     // 18
-                { x: centerX + 0.05 * scale, y: centerY - 0.17 * scale },     // 19
-                { x: centerX + 0.05 * scale, y: centerY - 0.25 * scale }      // 20: 小指尖
+                { x: centerX, y: centerY + 0.05 * scale },
+                { x: centerX - 0.03 * scale, y: centerY + 0.03 * scale },
+                { x: centerX - 0.05 * scale, y: centerY - 0.02 * scale },
+                { x: centerX - 0.06 * scale, y: centerY - 0.08 * scale },
+                { x: centerX - 0.07 * scale, y: centerY - 0.14 * scale },
+                { x: centerX - 0.01 * scale, y: centerY },
+                { x: centerX - 0.01 * scale, y: centerY - 0.10 * scale },
+                { x: centerX - 0.01 * scale, y: centerY - 0.20 * scale },
+                { x: centerX - 0.01 * scale, y: centerY - 0.30 * scale },
+                { x: centerX + 0.01 * scale, y: centerY },
+                { x: centerX + 0.01 * scale, y: centerY - 0.11 * scale },
+                { x: centerX + 0.01 * scale, y: centerY - 0.22 * scale },
+                { x: centerX + 0.01 * scale, y: centerY - 0.33 * scale },
+                { x: centerX + 0.03 * scale, y: centerY },
+                { x: centerX + 0.03 * scale, y: centerY - 0.10 * scale },
+                { x: centerX + 0.03 * scale, y: centerY - 0.20 * scale },
+                { x: centerX + 0.03 * scale, y: centerY - 0.29 * scale },
+                { x: centerX + 0.05 * scale, y: centerY + 0.01 * scale },
+                { x: centerX + 0.05 * scale, y: centerY - 0.08 * scale },
+                { x: centerX + 0.05 * scale, y: centerY - 0.17 * scale },
+                { x: centerX + 0.05 * scale, y: centerY - 0.25 * scale }
             ];
 
             drawHand(hintPose, false);
         }
 
         function initHandTracking() {
-            // 初始化 MediaPipe Hands
             hands = new Hands({
                 locateFile: (file) => {
                     return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
@@ -632,7 +631,6 @@
 
             hands.onResults(onHandResults);
 
-            // 初始化摄像头
             camera = new Camera(el.video, {
                 onFrame: async () => {
                     await hands.send({ image: el.video });
@@ -648,56 +646,46 @@
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const landmarks = results.multiHandLandmarks[0];
 
-                // 绘制用户的手部骨架
                 drawHand(landmarks, true);
 
-                // 切换到追踪模式
                 if (!state.handDetected) {
                     state.handDetected = true;
                     el.handCanvas.classList.remove('hint-mode');
                     el.handCanvas.classList.add('tracking-mode');
                 }
 
-                // 获取食指指尖 (8) 和大拇指指尖 (4)
                 const thumbTip = landmarks[4];
                 const indexTip = landmarks[8];
 
-                // 镜像翻转 x 坐标
                 const thumbX = (1 - thumbTip.x) * window.innerWidth;
                 const thumbY = thumbTip.y * window.innerHeight;
                 const indexX = (1 - indexTip.x) * window.innerWidth;
                 const indexY = indexTip.y * window.innerHeight;
 
-                // 计算捏合点（两指中点）
                 const pinchX = (thumbX + indexX) / 2;
                 const pinchY = (thumbY + indexY) / 2;
 
-                // 计算两指距离
                 const distance = Math.sqrt(
                     Math.pow(thumbX - indexX, 2) +
                     Math.pow(thumbY - indexY, 2)
                 );
 
-                // 判断是否捏合（距离小于60像素）
                 const isPinchingRaw = distance < 60;
 
-                // 捏合稳定性检测 - 需要连续2帧才确认捏合
                 let isPinching = isPinchingRaw;
                 if (isPinchingRaw) {
                     state.pinchStableFrames++;
                     if (state.pinchStableFrames < 2) {
-                        isPinching = state.lastPinchState; // 保持上一帧状态
+                        isPinching = state.lastPinchState;
                     }
                 } else {
                     state.pinchStableFrames = 0;
                 }
 
-                // 更新拇指指示点位置
                 el.thumbPointer.style.display = 'block';
                 el.thumbPointer.style.left = thumbX + 'px';
                 el.thumbPointer.style.top = thumbY + 'px';
 
-                // 更新食指指示点位置
                 el.indexPointer.style.display = 'block';
                 el.indexPointer.style.left = indexX + 'px';
                 el.indexPointer.style.top = indexY + 'px';
@@ -710,18 +698,13 @@
                     el.indexPointer.classList.remove('pinching');
                 }
 
-                // 更新触摸位置（使用食指指尖）
                 updateTouchPosition(indexX, indexY);
 
-                // 处理捏合动作
                 if (isPinching && !state.lastPinchState) {
-                    // 开始捏合
                     handlePinchStart(pinchX, pinchY);
                 } else if (isPinching && state.lastPinchState) {
-                    // 持续捏合（拖动）
                     handlePinchMove(pinchX, pinchY);
                 } else if (!isPinching && state.lastPinchState) {
-                    // 结束捏合
                     handlePinchEnd(pinchX, pinchY);
                 }
 
@@ -730,15 +713,12 @@
                 state.pinchPoint = { x: pinchX, y: pinchY };
 
             } else {
-                // 没有检测到手
                 if (state.handDetected) {
                     el.thumbPointer.style.display = 'none';
                     el.indexPointer.style.display = 'none';
                     if (state.dragging) {
-                        // 如果正在拖动，结束拖动
                         endDrag({ clientX: state.pinchPoint.x, clientY: state.pinchPoint.y });
                     }
-                    // 恢复提示模式
                     el.handCanvas.classList.remove('tracking-mode');
                     el.handCanvas.classList.add('hint-mode');
                     drawHintHand();
@@ -746,36 +726,19 @@
                 state.handDetected = false;
                 state.lastPinchState = false;
                 state.pinchStableFrames = 0;
-                state.currentTouchedWaveform = null;
             }
         }
 
         function handlePinchStart(x, y) {
-            if (state.completed) return;
-
-            // 检查是否在句子上
-            const sentence = findSentenceAtPosition(x, y);
-            if (sentence && !sentence.placed) {
+            const option = findOptionAtPosition(x, y);
+            if (option) {
                 startDrag(x, y);
-                return;
-            }
-
-            // 检查是否在声纹线上
-            const slots = document.querySelectorAll('.waveform');
-            for (let waveform of slots) {
-                const rect = waveform.getBoundingClientRect();
-                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-                    const slotIdx = parseInt(waveform.dataset.slot);
-                    extractFromSlot(slotIdx, x, y);
-                    return;
-                }
             }
         }
 
         function handlePinchMove(x, y) {
             if (!state.dragging) return;
 
-            // 更新句子位置
             const newX = x - state.dragOffset.x;
             const newY = y - state.dragOffset.y;
 
@@ -787,184 +750,318 @@
                 text.setAttribute('x', newX);
                 text.setAttribute('y', newY + index * 36);
             });
-
-            checkSlotHighlight(x, y);
         }
 
         function handlePinchEnd(x, y) {
             if (!state.dragging) return;
 
-            const slot = findSlotAtPosition(x, y);
+            const slotId = findSlotAtPosition(x, y);
 
-            if (slot) {
-                placeInSlot(state.dragging, slot);
+            if (slotId) {
+                placeInSlot(state.dragging, slotId);
             }
 
             state.dragging.element.classList.remove('dragging');
             state.dragging = null;
-
-            // 移除所有高亮
-            document.querySelectorAll('.sort-slot').forEach(s => s.classList.remove('highlight'));
-
-            checkCompletion();
         }
 
-        // ============= 初始化场景 =============
-        function initScene() {
-            const w = window.innerWidth;
-            const h = window.innerHeight;
+        // ============= 初始化页面内容 =============
+        function initPage(pageNum) {
+            const pageData = pagesData[pageNum - 1];
+            const pageState = state.pageStates[pageNum];
 
-            // 随机打乱句子顺序
-            const shuffled = [...sentences].sort(() => Math.random() - 0.5);
+            // 开始显示初始文字序列
+            showNextInitialText(pageNum);
+        }
 
-            // 清空旧的句子
-            el.sentenceLayer.innerHTML = '';
-            state.sentenceElements = [];
+        function showNextInitialText(pageNum) {
+            const pageData = pagesData[pageNum - 1];
+            const pageState = state.pageStates[pageNum];
+            const container = document.getElementById(`initialText${pageNum}`);
 
-            shuffled.forEach((sentence, index) => {
-                // 预先计算文本尺寸
-                const lines = wrapText(sentence.text, 25); // 每行最多25个字符（字体较小）
-                const estimatedWidth = lines[0].length * 18; // 更准确的宽度估计（28px字体）
-                const estimatedHeight = lines.length * 36; // 行高36px
+            if (pageState.textIndex >= pageData.initialTexts.length) {
+                // 所有初始文字已显示，现在显示选项文字
+                initOptionTexts(pageNum);
+                return;
+            }
 
-                // 随机位置（避开中央排序区域和已有句子）
+            const textData = pageData.initialTexts[pageState.textIndex];
+
+            // 检查是否需要等待槽位填充
+            if (textData.showAfterSlot) {
+                // 这个文本需要等待槽位填充后才显示
+                return;
+            }
+
+            if (textData.text === '__SLOT__') {
+                // 创建槽位线
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'initial-text visible';
+                slotDiv.innerHTML = `<span class="slot-line-inline" data-slot="${textData.slotId}"></span>`;
+                container.appendChild(slotDiv);
+
+                // 播放音调
+                Audio.playTone(textData.freq);
+
+                // 继续下一个
+                pageState.textIndex++;
+                setTimeout(() => showNextInitialText(pageNum), 1000);
+            } else {
+                // 创建普通文本
+                const textDiv = document.createElement('div');
+                textDiv.className = 'initial-text';
+                textDiv.textContent = textData.text;
+                container.appendChild(textDiv);
+
+                // 显示文本
+                setTimeout(() => {
+                    textDiv.classList.add('visible');
+
+                    // 播放音调
+                    Audio.playTone(textData.freq);
+
+                    // 模糊文本
+                    setTimeout(() => {
+                        textDiv.classList.add('blurred');
+
+                        // 继续下一个
+                        pageState.textIndex++;
+                        showNextInitialText(pageNum);
+                    }, 1000);
+                }, 100);
+            }
+        }
+
+        function initOptionTexts(pageNum) {
+            const pageData = pagesData[pageNum - 1];
+            const pageState = state.pageStates[pageNum];
+            const svgLayer = document.getElementById(`sentenceLayer${pageNum}`);
+            const page = document.getElementById(`page${pageNum}`);
+            const rect = page.getBoundingClientRect();
+
+            // 随机打乱选项
+            const shuffled = [...pageData.optionTexts].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach((option, index) => {
+                // 随机位置
                 let x, y;
                 let attempts = 0;
                 let validPosition = false;
 
                 do {
-                    x = 100 + Math.random() * (w - 200);
-                    y = 80 + Math.random() * (h - 160);
+                    x = rect.left + 150 + Math.random() * (rect.width - 300);
+                    y = rect.top + 200 + Math.random() * (rect.height - 400);
                     attempts++;
 
-                    // 检查是否在中央排序区域（缩小中央排除区域）
-                    const inCenterArea = (
-                        x > w/2 - 180 && x < w/2 + 180 &&
-                        y > h/2 - 180 && y < h/2 + 180
-                    );
-
-                    if (inCenterArea) continue;
-
-                    // 检查是否与已有句子重叠（留出边距）
+                    // 检查是否与已有选项重叠
                     validPosition = true;
-                    const margin = 250; // 句子之间的最小距离（增大到250以防止堆叠）
+                    const margin = 200;
 
-                    for (let existing of state.sentenceElements) {
+                    for (let existing of pageState.optionElements) {
                         const dx = Math.abs(x - existing.x);
                         const dy = Math.abs(y - existing.y);
-                        const minDistX = (estimatedWidth + existing.width) / 2 + margin;
-                        const minDistY = (estimatedHeight + existing.height) / 2 + margin;
 
-                        if (dx < minDistX && dy < minDistY) {
+                        if (dx < margin && dy < margin) {
                             validPosition = false;
                             break;
                         }
                     }
 
-                    // 如果尝试太多次，降低要求
-                    if (attempts > 200) {
-                        validPosition = !inCenterArea;
-                    }
+                } while (!validPosition && attempts < 100);
 
-                } while (!validPosition && attempts < 500);
-
-                // 创建SVG文本元素
+                // 创建SVG文本
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                textGroup.dataset.id = sentence.id;
-                textGroup.dataset.freq = sentence.freq;
+                textGroup.dataset.correctSlot = option.correctSlot || '';
 
-                lines.forEach((line, lineIndex) => {
-                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    text.classList.add('sentence-text');
-                    text.setAttribute('x', x);
-                    text.setAttribute('y', y + lineIndex * 36);
-                    text.textContent = line;
-                    textGroup.appendChild(text);
-                });
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.classList.add('sentence-text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y);
+                text.textContent = option.text;
+                textGroup.appendChild(text);
 
-                el.sentenceLayer.appendChild(textGroup);
+                svgLayer.appendChild(textGroup);
 
-                state.sentenceElements.push({
-                    id: sentence.id,
+                pageState.optionElements.push({
+                    text: option.text,
+                    correctSlot: option.correctSlot,
                     x: x,
                     y: y,
-                    text: sentence.text,
-                    freq: sentence.freq,
                     element: textGroup,
-                    placed: false,
-                    width: estimatedWidth,
-                    height: estimatedHeight
+                    placed: false
                 });
             });
-        }
-
-        // 文本换行辅助函数
-        function wrapText(text, maxChars) {
-            const words = text.split(' ');
-            const lines = [];
-            let currentLine = '';
-
-            words.forEach(word => {
-                if ((currentLine + word).length <= maxChars) {
-                    currentLine += (currentLine ? ' ' : '') + word;
-                } else {
-                    if (currentLine) lines.push(currentLine);
-                    currentLine = word;
-                }
-            });
-            if (currentLine) lines.push(currentLine);
-
-            return lines;
-        }
-
-        // 生成声纹线路径
-        function generateWaveformPath(width, freq) {
-            const points = 50;
-            const amplitude = 8;
-            const frequency = (freq / 261.63) * 3; // 基于do音调整频率
-
-            let path = `M 0,0`;
-            for (let i = 1; i <= points; i++) {
-                const x = (i / points) * width;
-                const y = Math.sin((i / points) * Math.PI * 2 * frequency) * amplitude * (Math.random() * 0.3 + 0.7);
-                path += ` L ${x},${y}`;
-            }
-
-            return path;
         }
 
         // ============= 拖拽处理 =============
         function startDrag(x, y) {
-            if (state.completed) return;
+            const option = findOptionAtPosition(x, y);
+            if (!option || option.placed) return;
 
-            // 检测是否在句子区域内
-            const sentence = findSentenceAtPosition(x, y);
-            if (!sentence || sentence.placed) return;
-
-            state.dragging = sentence;
+            state.dragging = option;
             state.dragOffset = {
-                x: x - sentence.x,
-                y: y - sentence.y
+                x: x - option.x,
+                y: y - option.y
             };
 
-            sentence.element.classList.add('dragging');
-
-            // 播放音调
-            Audio.playTone(sentence.freq);
+            option.element.classList.add('dragging');
         }
 
-        function onMouseDown(e) {
-            startDrag(e.clientX, e.clientY);
+        function endDrag(e) {
+            if (!state.dragging) return;
+
+            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+            const slotId = findSlotAtPosition(clientX, clientY);
+
+            if (slotId) {
+                placeInSlot(state.dragging, slotId);
+            }
+
+            state.dragging.element.classList.remove('dragging');
+            state.dragging = null;
         }
 
-        function onTouchStart(e) {
-            if (e.touches.length > 0) {
-                e.preventDefault();
-                const touch = e.touches[0];
-                startDrag(touch.clientX, touch.clientY);
+        function findSlotAtPosition(x, y) {
+            const slots = document.querySelectorAll('.slot-line-inline');
+            for (let slot of slots) {
+                const rect = slot.getBoundingClientRect();
+                if (x >= rect.left - 20 && x <= rect.right + 20 &&
+                    y >= rect.top - 20 && y <= rect.bottom + 20) {
+                    return slot.dataset.slot;
+                }
+            }
+            return null;
+        }
+
+        function findOptionAtPosition(x, y) {
+            const pageState = state.pageStates[state.currentPage];
+
+            for (let option of pageState.optionElements) {
+                if (option.placed) continue;
+
+                const estimatedWidth = option.text.length * 18;
+                const estimatedHeight = 36;
+
+                if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
+                    y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        function placeInSlot(option, slotId) {
+            const pageState = state.pageStates[state.currentPage];
+            const pageData = pagesData[state.currentPage - 1];
+
+            // 检查是否正确
+            if (option.correctSlot !== slotId) {
+                // 错误，不放置
+                return;
+            }
+
+            // 正确，放置
+            option.placed = true;
+            option.element.style.display = 'none';
+
+            // 填充槽位
+            const slotElement = document.querySelector(`.slot-line-inline[data-slot="${slotId}"]`);
+            if (slotElement) {
+                slotElement.classList.add('filled');
+
+                const filledText = document.createElement('div');
+                filledText.className = 'filled-text';
+                filledText.textContent = option.text;
+                slotElement.appendChild(filledText);
+            }
+
+            pageState.slotsFilled[slotId] = true;
+
+            // 检查是否有需要显示的后续文本
+            const nextText = pageData.initialTexts.find(t => t.showAfterSlot === slotId);
+            if (nextText) {
+                const container = document.getElementById(`initialText${state.currentPage}`);
+
+                const textDiv = document.createElement('div');
+                textDiv.className = 'initial-text';
+                textDiv.textContent = nextText.text;
+                container.appendChild(textDiv);
+
+                setTimeout(() => {
+                    textDiv.classList.add('visible');
+                    Audio.playTone(nextText.freq);
+
+                    setTimeout(() => {
+                        textDiv.classList.add('blurred');
+                        checkPageCompletion();
+                    }, 1000);
+                }, 500);
+            } else {
+                checkPageCompletion();
             }
         }
 
+        function checkPageCompletion() {
+            const pageState = state.pageStates[state.currentPage];
+            const pageData = pagesData[state.currentPage - 1];
+
+            // 检查所有槽位是否已填充
+            const allSlotsFilled = pageData.initialTexts
+                .filter(t => t.slotId)
+                .every(t => pageState.slotsFilled[t.slotId]);
+
+            if (allSlotsFilled && !pageState.completed) {
+                pageState.completed = true;
+
+                // 播放成功音效
+                Audio.success();
+
+                // 等待后自动滚动到下一页
+                setTimeout(() => {
+                    if (state.currentPage < 3) {
+                        scrollToPage(state.currentPage + 1);
+                    } else {
+                        // 所有页面完成，显示结束画面
+                        showEnd();
+                    }
+                }, 2000);
+            }
+        }
+
+        function scrollToPage(pageNum) {
+            const page = document.getElementById(`page${pageNum}`);
+            if (page) {
+                page.scrollIntoView({ behavior: 'smooth' });
+                state.currentPage = pageNum;
+
+                // 初始化新页面
+                setTimeout(() => {
+                    initPage(pageNum);
+                }, 800);
+            }
+        }
+
+        // ============= 触摸位置更新 =============
+        function updateTouchPosition(x, y) {
+            state.mouseX = x;
+            state.mouseY = y;
+
+            el.touchCircle.style.left = x + 'px';
+            el.touchCircle.style.top = y + 'px';
+
+            // 更新所有页面的遮罩圆位置
+            for (let i = 1; i <= 3; i++) {
+                const maskCircle = document.getElementById(`maskCircle${i}`);
+                if (maskCircle) {
+                    maskCircle.setAttribute('cx', x);
+                    maskCircle.setAttribute('cy', y);
+                }
+            }
+        }
+
+        // ============= 鼠标/触摸事件 =============
         function onMouseMove(e) {
             updateTouchPosition(e.clientX, e.clientY);
 
@@ -973,7 +1070,6 @@
                 const newX = e.clientX - state.dragOffset.x;
                 const newY = e.clientY - state.dragOffset.y;
 
-                // 更新句子位置
                 state.dragging.x = newX;
                 state.dragging.y = newY;
 
@@ -982,9 +1078,11 @@
                     text.setAttribute('x', newX);
                     text.setAttribute('y', newY + index * 36);
                 });
-
-                checkSlotHighlight(e.clientX, e.clientY);
             }
+        }
+
+        function onMouseDown(e) {
+            startDrag(e.clientX, e.clientY);
         }
 
         function onTouchMove(e) {
@@ -998,7 +1096,6 @@
                 const newX = touch.clientX - state.dragOffset.x;
                 const newY = touch.clientY - state.dragOffset.y;
 
-                // 更新句子位置
                 state.dragging.x = newX;
                 state.dragging.y = newY;
 
@@ -1007,346 +1104,14 @@
                     text.setAttribute('x', newX);
                     text.setAttribute('y', newY + index * 36);
                 });
-
-                checkSlotHighlight(touch.clientX, touch.clientY);
             }
         }
 
-        function endDrag(e) {
-            if (!state.dragging) return;
-
-            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-
-            const slot = findSlotAtPosition(clientX, clientY);
-
-            if (slot) {
-                placeInSlot(state.dragging, slot);
-            }
-
-            state.dragging.element.classList.remove('dragging');
-            state.dragging = null;
-
-            // 移除所有高亮
-            document.querySelectorAll('.sort-slot').forEach(s => s.classList.remove('highlight'));
-
-            checkCompletion();
-        }
-
-        function checkSlotHighlight(x, y) {
-            document.querySelectorAll('.sort-slot').forEach(slot => {
-                slot.classList.remove('highlight');
-            });
-
-            const slot = findSlotAtPosition(x, y);
-            if (slot) {
-                slot.classList.add('highlight');
-            }
-        }
-
-        function findSlotAtPosition(x, y) {
-            const slots = document.querySelectorAll('.sort-slot');
-            for (let slot of slots) {
-                const line = slot.querySelector('.slot-line');
-                const rect = line.getBoundingClientRect();
-                // 扩大检测区域
-                if (x >= rect.left - 20 && x <= rect.right + 20 &&
-                    y >= rect.top - 20 && y <= rect.bottom + 20) {
-                    return slot;
-                }
-            }
-            return null;
-        }
-
-        function findSentenceAtPosition(x, y) {
-            for (let sentence of state.sentenceElements) {
-                if (sentence.placed) continue;
-
-                const halfWidth = sentence.width / 2;
-                const halfHeight = sentence.height / 2;
-
-                if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
-                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight + 50) {
-                    return sentence;
-                }
-            }
-            return null;
-        }
-
-        function placeInSlot(sentence, slot) {
-            const slotIndex = parseInt(slot.dataset.slot) - 1;
-
-            // 如果槽位已有内容，将旧内容恢复为未放置状态
-            if (state.slotContents[slotIndex]) {
-                const oldSentence = state.sentenceElements.find(s => s.id === state.slotContents[slotIndex]);
-                if (oldSentence) {
-                    oldSentence.placed = false;
-                    oldSentence.element.style.display = '';
-                }
-            }
-
-            // 如果这个句子已在其他槽位，清除旧槽位
-            const oldSlotIndex = state.slotContents.indexOf(sentence.id);
-            if (oldSlotIndex !== -1) {
-                state.slotContents[oldSlotIndex] = null;
-                delete state.waveformFreqs[oldSlotIndex];
-                const oldSlot = document.querySelector(`.sort-slot[data-slot="${oldSlotIndex + 1}"]`);
-                if (oldSlot) {
-                    oldSlot.classList.remove('filled');
-                    const oldWaveform = oldSlot.querySelector('.waveform');
-                    if (oldWaveform) oldWaveform.remove();
-                }
-            }
-
-            // 放置句子
-            state.slotContents[slotIndex] = sentence.id;
-            state.waveformFreqs[slotIndex] = sentence.freq;
-            sentence.placed = true;
-
-            // 隐藏SVG元素
-            sentence.element.style.display = 'none';
-
-            // 更新槽位显示 - 创建声纹线
-            slot.classList.add('filled');
-            const existingWaveform = slot.querySelector('.waveform');
-            if (existingWaveform) existingWaveform.remove();
-
-            // 创建SVG声纹线
-            const lineElement = slot.querySelector('.slot-line');
-            const lineWidth = lineElement.offsetWidth;
-
-            const waveformSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            waveformSvg.classList.add('waveform');
-            waveformSvg.setAttribute('width', lineWidth);
-            waveformSvg.setAttribute('height', '30');
-            waveformSvg.setAttribute('viewBox', `0 -15 ${lineWidth} 30`);
-            waveformSvg.dataset.freq = sentence.freq;
-            waveformSvg.dataset.slot = slotIndex;
-
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.classList.add('waveform-line');
-            path.setAttribute('d', generateWaveformPath(lineWidth, sentence.freq));
-
-            waveformSvg.appendChild(path);
-            lineElement.appendChild(waveformSvg);
-
-            // 添加鼠标悬停事件 - 播放音调
-            waveformSvg.addEventListener('mouseenter', function(e) {
-                // 只有在非拖拽状态时才播放音调
-                if (!state.dragging) {
-                    Audio.playTone(parseFloat(this.dataset.freq));
-                }
-            });
-
-            // 添加点击拖拽事件 - 直接提取句子
-            waveformSvg.addEventListener('mousedown', function(e) {
+        function onTouchStart(e) {
+            if (e.touches.length > 0) {
                 e.preventDefault();
-                e.stopPropagation();
-                const slotIdx = parseInt(this.dataset.slot);
-                extractFromSlot(slotIdx, e.clientX, e.clientY);
-            });
-
-            waveformSvg.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.touches.length > 0) {
-                    const touch = e.touches[0];
-                    const slotIdx = parseInt(this.dataset.slot);
-                    extractFromSlot(slotIdx, touch.clientX, touch.clientY);
-                }
-            });
-
-            // 播放音调
-            Audio.playTone(sentence.freq);
-        }
-
-        function checkCompletion() {
-            // 检查是否所有槽位都已填充
-            if (state.slotContents.some(s => s === null)) return;
-
-            // 检查顺序是否正确
-            const correct = state.slotContents.every((id, index) => id === index + 1);
-
-            if (correct) {
-                state.completed = true;
-                Audio.success();
-
-                setTimeout(() => {
-                    showEnd();
-                }, 1000);
-            }
-        }
-
-        // ============= 触摸位置更新 =============
-        function updateTouchPosition(x, y) {
-            state.mouseX = x;
-            state.mouseY = y;
-
-            // 更新触摸圈位置
-            el.touchCircle.style.left = x + 'px';
-            el.touchCircle.style.top = y + 'px';
-
-            // 更新遮罩圆位置
-            el.maskCircle.setAttribute('cx', x);
-            el.maskCircle.setAttribute('cy', y);
-
-            // 检测触摸的句子并播放音调
-            checkTouchSound(x, y);
-        }
-
-        function checkTouchSound(x, y) {
-            if (state.dragging || state.isPinching) return;
-
-            let touchedSentence = null;
-
-            // 检测触摸到的句子 - 缩小检测范围
-            for (let sentence of state.sentenceElements) {
-                if (sentence.placed) continue;
-
-                // 缩小检测范围为实际文本大小的50%（字体更小）
-                const halfWidth = sentence.width * 0.25;
-                const halfHeight = sentence.height * 0.25;
-
-                if (x >= sentence.x - halfWidth && x <= sentence.x + halfWidth &&
-                    y >= sentence.y - halfHeight && y <= sentence.y + halfHeight) {
-                    touchedSentence = sentence;
-                    break;
-                }
-            }
-
-            // 只有当触摸到新句子时才播放音效
-            if (touchedSentence && touchedSentence.id !== state.currentTouchedSentence) {
-                Audio.playTone(touchedSentence.freq);
-                state.currentTouchedSentence = touchedSentence.id;
-            } else if (!touchedSentence) {
-                // 离开所有句子时，重置当前触摸的句子
-                state.currentTouchedSentence = null;
-            }
-
-            // 检测触摸到的声纹线
-            if (!state.isPinching) {
-                checkWaveformTouch(x, y);
-            }
-        }
-
-        function checkWaveformTouch(x, y) {
-            let touchedWaveform = null;
-
-            // 检测所有声纹线
-            const waveforms = document.querySelectorAll('.waveform');
-            for (let waveform of waveforms) {
-                const rect = waveform.getBoundingClientRect();
-                // 扩大检测区域，更容易触发
-                if (x >= rect.left - 10 && x <= rect.right + 10 &&
-                    y >= rect.top - 10 && y <= rect.bottom + 10) {
-                    touchedWaveform = waveform.dataset.slot;
-                    break;
-                }
-            }
-
-            // 只有当触摸到新声纹线时才播放音效
-            if (touchedWaveform && touchedWaveform !== state.currentTouchedWaveform) {
-                const freq = state.waveformFreqs[parseInt(touchedWaveform)];
-                if (freq) {
-                    Audio.playTone(freq);
-                }
-                state.currentTouchedWaveform = touchedWaveform;
-            } else if (!touchedWaveform) {
-                // 离开所有声纹线时，重置
-                state.currentTouchedWaveform = null;
-            }
-        }
-
-        // ============= 长按拖拽处理 =============
-        function startLongPress(slotIndex, x, y) {
-            // 清除之前的计时器
-            if (state.longPressTimer) {
-                clearTimeout(state.longPressTimer);
-            }
-
-            // 设置新的长按计时器
-            state.longPressTimer = setTimeout(() => {
-                extractFromSlot(slotIndex, x, y);
-            }, state.longPressThreshold);
-        }
-
-        function cancelLongPress() {
-            if (state.longPressTimer) {
-                clearTimeout(state.longPressTimer);
-                state.longPressTimer = null;
-            }
-        }
-
-        function extractFromSlot(slotIndex, x, y) {
-            const sentenceId = state.slotContents[slotIndex];
-            if (!sentenceId) return;
-
-            // 找到句子对象
-            const sentence = state.sentenceElements.find(s => s.id === sentenceId);
-            if (!sentence) return;
-
-            // 清除槽位
-            state.slotContents[slotIndex] = null;
-            delete state.waveformFreqs[slotIndex];
-
-            // 移除声纹线
-            const slot = document.querySelector(`.sort-slot[data-slot="${slotIndex + 1}"]`);
-            if (slot) {
-                slot.classList.remove('filled');
-                const waveform = slot.querySelector('.waveform');
-                if (waveform) waveform.remove();
-            }
-
-            // 恢复句子
-            sentence.placed = false;
-            sentence.element.style.display = '';
-
-            // 将句子移动到鼠标位置
-            sentence.x = x;
-            sentence.y = y;
-
-            const texts = sentence.element.querySelectorAll('text');
-            texts.forEach((text, index) => {
-                text.setAttribute('x', x);
-                text.setAttribute('y', y + index * 36);
-            });
-
-            // 开始拖拽
-            state.dragging = sentence;
-            state.dragOffset = { x: 0, y: 0 };
-            sentence.element.classList.add('dragging');
-
-            // 播放音调
-            Audio.playTone(sentence.freq);
-        }
-
-        // ============= 键盘控制 =============
-        function onKeyDown(e) {
-            const step = 30;
-            let moved = false;
-
-            switch(e.key) {
-                case 'ArrowUp':
-                    state.mouseY = Math.max(60, state.mouseY - step);
-                    moved = true;
-                    break;
-                case 'ArrowDown':
-                    state.mouseY = Math.min(window.innerHeight - 60, state.mouseY + step);
-                    moved = true;
-                    break;
-                case 'ArrowLeft':
-                    state.mouseX = Math.max(60, state.mouseX - step);
-                    moved = true;
-                    break;
-                case 'ArrowRight':
-                    state.mouseX = Math.min(window.innerWidth - 60, state.mouseX + step);
-                    moved = true;
-                    break;
-            }
-
-            if (moved) {
-                e.preventDefault();
-                updateTouchPosition(state.mouseX, state.mouseY);
+                const touch = e.touches[0];
+                startDrag(touch.clientX, touch.clientY);
             }
         }
 
@@ -1362,15 +1127,9 @@
             el.soundToggle.setAttribute('aria-pressed', state.soundOn);
         }
 
-        function announce(msg) {
-            el.live.textContent = msg;
-            setTimeout(() => el.live.textContent = '', 1000);
-        }
-
         // ============= 初始化 =============
         function init() {
             Audio.init();
-            initScene();
 
             // 绘制初始提示手部骨架
             drawHintHand();
@@ -1378,19 +1137,21 @@
             // 初始化手势识别
             initHandTracking();
 
-            el.scene.addEventListener('mousemove', onMouseMove);
-            el.scene.addEventListener('touchmove', onTouchMove, { passive: false });
-            el.scene.addEventListener('mousedown', onMouseDown);
-            el.scene.addEventListener('touchstart', onTouchStart, { passive: false });
-            el.scene.addEventListener('mouseup', endDrag);
-            el.scene.addEventListener('touchend', endDrag);
-            el.scene.addEventListener('keydown', onKeyDown);
+            // 初始化第一页
+            initPage(1);
+
+            // 事件监听
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('touchstart', onTouchStart, { passive: false });
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
             el.soundToggle.addEventListener('click', toggleSound);
 
             window.addEventListener('resize', () => {
                 el.handCanvas.width = window.innerWidth;
                 el.handCanvas.height = window.innerHeight;
-                initScene();
                 if (!state.handDetected) {
                     drawHintHand();
                 }
