@@ -992,8 +992,12 @@
                 let delay = 0;
                 const playInterval = 900;  // 每个音间隔900ms
 
-                // 播报前两个初始句子
-                for (let i = 0; i < Math.min(2, allTexts.length); i++) {
+                // 找到槽位在初始文字数组中的索引
+                const slotIndex = pageData.initialTexts.findIndex(t => t.slotId === slotId);
+                const textsBeforeSlot = slotIndex > 0 ? slotIndex : 2;
+
+                // 播报槽位前的所有初始句子
+                for (let i = 0; i < Math.min(textsBeforeSlot, allTexts.length); i++) {
                     const textDiv = allTexts[i];
                     setTimeout(() => {
                         // 播放音调
@@ -1072,8 +1076,12 @@
             let delay = 0;
             const playInterval = 900;
 
-            // 播放前两个初始句子的音节并取消模糊
-            for (let i = 0; i < Math.min(2, allTexts.length); i++) {
+            // 找到槽位在初始文字数组中的索引
+            const slotIndex = pageData.initialTexts.findIndex(t => t.slotId === slotId);
+            const textsBeforeSlot = slotIndex > 0 ? slotIndex : 2;
+
+            // 播放槽位前的所有初始句子的音节并取消模糊
+            for (let i = 0; i < Math.min(textsBeforeSlot, allTexts.length); i++) {
                 const textDiv = allTexts[i];
                 setTimeout(() => {
                     if (pageData.initialTexts[i]) {
