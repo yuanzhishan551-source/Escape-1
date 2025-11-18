@@ -815,36 +815,16 @@
             const page = document.getElementById(`page${pageNum}`);
             const rect = page.getBoundingClientRect();
 
+            // 调试：只生成页面1的文字，放在固定位置
+            if (pageNum !== 1) return;
+
             // 随机打乱选项
             const shuffled = [...pageData.optionTexts].sort(() => Math.random() - 0.5);
 
             shuffled.forEach((option, index) => {
-                // 随机位置
-                let x, y;
-                let attempts = 0;
-                let validPosition = false;
-
-                do {
-                    // SVG使用fixed定位，坐标是viewport坐标
-                    x = rect.left + 150 + Math.random() * (rect.width - 300);
-                    y = rect.top + 200 + Math.random() * (rect.height - 400);
-                    attempts++;
-
-                    // 检查是否与已有选项重叠
-                    validPosition = true;
-                    const margin = 200;
-
-                    for (let existing of pageState.optionElements) {
-                        const dx = Math.abs(x - existing.x);
-                        const dy = Math.abs(y - existing.y);
-
-                        if (dx < margin && dy < margin) {
-                            validPosition = false;
-                            break;
-                        }
-                    }
-
-                } while (!validPosition && attempts < 100);
+                // 固定位置：第二句话的y轴，x往右移动50
+                const x = rect.left + 100 + 50;  // 页面左边 + 100 + 50
+                const y = rect.top + 180 + (index * 60);  // 第二句话附近，每个选项间隔60px
 
                 // 创建SVG文本
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
