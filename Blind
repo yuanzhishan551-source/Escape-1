@@ -779,6 +779,9 @@
             const pageData = pagesData[pageNum - 1];
             const pageState = state.pageStates[pageNum];
 
+            // 立即生成选项文字（不等初始文字播放完）
+            initOptionTexts(pageNum);
+
             // 开始显示初始文字序列
             showNextInitialText(pageNum);
         }
@@ -789,8 +792,7 @@
             const container = document.getElementById(`initialText${pageNum}`);
 
             if (pageState.textIndex >= pageData.initialTexts.length) {
-                // 所有初始文字已显示，现在显示选项文字
-                initOptionTexts(pageNum);
+                // 所有初始文字已显示
                 return;
             }
 
