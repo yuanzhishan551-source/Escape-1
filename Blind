@@ -30,7 +30,7 @@
         .pages-container {
             width: 100vw;
             height: 100vh;
-            overflow-y: hidden;
+            overflow-y: scroll;
             scroll-snap-type: y mandatory;
             scroll-behavior: smooth;
         }
@@ -72,9 +72,9 @@
 
         /* 初始文字 */
         .initial-text {
-            font-size: 56px;
+            font-size: 36px;
             color: rgba(220, 220, 220, 0.9);
-            margin-bottom: 60px;
+            margin-bottom: 40px;
             opacity: 0;
             transform: translateY(20px);
             transition: all 0.8s ease;
@@ -113,10 +113,10 @@
 
         .slot-line-inline .filled-text {
             position: absolute;
-            top: -40px;
+            top: -28px;
             left: 0;
             text-align: left;
-            font-size: 56px;
+            font-size: 36px;
             color: rgba(120, 120, 120, 0.8);
             white-space: nowrap;
         }
@@ -135,7 +135,7 @@
         /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
         .sentence-text {
             fill: rgba(220, 220, 220, 0.9);
-            font-size: 56px;
+            font-size: 36px;
             font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
             cursor: grab;
             user-select: none;
@@ -372,7 +372,7 @@
                     { text: 'You are Your Way Home.', tone: 'do', freq: 261.63 },
                     { text: 'At the next intersection, you should:', tone: 're', freq: 293.66 },
                     { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
-                    { text: 'Based on the sound, you are safely crossed this intersection.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
+                    { text: 'The rhythmic tapping of your cane confirms you\'re on the right path.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
                 ],
                 optionTexts: [
                     { text: 'Go straight.', correctSlot: null, freq: 261.63 },  // do (wrong)
@@ -380,19 +380,20 @@
                     { text: 'Turn Right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
                 ]
             },
-            // 页面2: 购物场景
+            // 页面2: 住宅区场景
             {
                 id: 2,
                 initialTexts: [
-                    { text: 'You are at the supermarket.', tone: 'sol', freq: 392.00 },
-                    { text: 'You need to find:', tone: 'la', freq: 440.00 },
-                    { text: '__SLOT__', tone: 'do', freq: 523.26, slotId: 'slot2' },
-                    { text: 'You successfully found the item by its sound.', tone: 're', freq: 587.33, showAfterSlot: 'slot2' }
+                    { text: 'The sounds of traffic grow quieter as you enter the residential area.', tone: 'sol', freq: 392.00 },
+                    { text: 'You hear children playing in the distance and a dog barking from Mrs. Chen\'s yard - a reliable landmark.', tone: 'la', freq: 440.00 },
+                    { text: 'The texture under your feet changes from smooth pavement to the bumpy tactile tiles at the intersection.', tone: 'do', freq: 523.26 },
+                    { text: '__SLOT__', tone: 're', freq: 587.33, slotId: 'slot2' },
+                    { text: 'The clicking of your neighbor\'s wind chimes grows louder - you\'re almost home.', tone: 'mi', freq: 659.25, showAfterSlot: 'slot2' }
                 ],
                 optionTexts: [
-                    { text: 'The milk section.', correctSlot: 'slot2', freq: 329.63 },  // mi (correct)
-                    { text: 'The bread aisle.', correctSlot: null, freq: 261.63 },  // do (wrong)
-                    { text: 'The checkout counter.', correctSlot: null, freq: 349.23 }  // fa (wrong)
+                    { text: 'Turn toward the barking dog.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Follow the children\'s voices.', correctSlot: null, freq: 349.23 },  // fa (wrong)
+                    { text: 'Continue on the tactile path.', correctSlot: 'slot2', freq: 329.63 }  // mi (correct)
                 ]
             },
             // 页面3: 回家场景
@@ -944,9 +945,9 @@
             for (let option of pageState.optionElements) {
                 if (option.placed) continue;
 
-                // 字体翻倍后调整检测范围
-                const estimatedWidth = option.text.length * 36;
-                const estimatedHeight = 72;
+                // 字体36px调整检测范围
+                const estimatedWidth = option.text.length * 23;
+                const estimatedHeight = 48;
 
                 if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
                     y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
@@ -1203,12 +1204,12 @@
             let touchedOption = null;
             const pageState = state.pageStates[state.currentPage];
 
-            // 检测触摸到的选项（直接使用viewport坐标，字体翻倍后调整）
+            // 检测触摸到的选项（字体36px调整）
             for (let option of pageState.optionElements) {
                 if (option.placed) continue;
 
-                const estimatedWidth = option.text.length * 36;
-                const estimatedHeight = 72;
+                const estimatedWidth = option.text.length * 23;
+                const estimatedHeight = 48;
 
                 if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
                     y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
@@ -1243,9 +1244,9 @@
             blurredTexts.forEach((textDiv, index) => {
                 const rect = textDiv.getBoundingClientRect();
 
-                // 计算实际文字宽度（基于字符数和字体大小）
+                // 计算实际文字宽度（基于字符数和字体大小36px）
                 const textContent = textDiv.textContent || '';
-                const estimatedTextWidth = Math.min(textContent.length * 28, rect.width * 0.8);
+                const estimatedTextWidth = Math.min(textContent.length * 18, rect.width * 0.8);
                 const textLeft = rect.left;
                 const textRight = rect.left + estimatedTextWidth;
 
