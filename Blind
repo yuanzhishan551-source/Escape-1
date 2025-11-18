@@ -303,7 +303,7 @@
         </div>
 
         <!-- 页面2: 第二个场景 -->
-        <div class="page align-right" id="page2" data-page="2">
+        <div class="page align-left" id="page2" data-page="2">
             <div class="page-content">
                 <div class="initial-text-container" id="initialText2">
                     <!-- 页面2内容 -->
@@ -386,9 +386,9 @@
                 initialTexts: [
                     { text: 'You enter the residential area.', tone: 'sol', freq: 392.00 },
                     { text: 'The traffic noise gradually fades away.', tone: 'la', freq: 440.00 },
-                    { text: 'Some noisy sounds are heard, you choose:', tone: 'do', freq: 523.26 },
-                    { text: '__SLOT__', tone: 're', freq: 587.33, slotId: 'slot2' },
-                    { text: 'The clicking of your neighbor\'s wind chimes grows louder - you\'re almost home.', tone: 'mi', freq: 659.25, showAfterSlot: 'slot2' }
+                    { text: 'Some noisy sounds are heard, you choose:', tone: 'xi', freq: 493.88 },
+                    { text: '__SLOT__', tone: 'do', freq: 523.26, slotId: 'slot2' },
+                    { text: 'The sound of the wind chimes is getting clearer - you\'re almost home.', tone: 're', freq: 587.33, showAfterSlot: 'slot2' }
                 ],
                 optionTexts: [
                     { text: 'Turn toward the barking dog.', correctSlot: null, freq: 261.63 },  // do (wrong)
@@ -396,19 +396,20 @@
                     { text: 'Continue on the tactile path.', correctSlot: 'slot2', freq: 329.63 }  // mi (correct)
                 ]
             },
-            // 页面3: 回家场景
+            // 页面3: 走廊场景
             {
                 id: 3,
                 initialTexts: [
-                    { text: 'You arrive at your building.', tone: 'mi', freq: 659.25 },
-                    { text: 'To enter, you should:', tone: 'fa', freq: 698.46 },
-                    { text: '__SLOT__', tone: 'sol', freq: 783.99, slotId: 'slot3' },
-                    { text: 'You made it home safely. Welcome home.', tone: 'la', freq: 880.00, showAfterSlot: 'slot3' }
+                    { text: 'You reach the hallway.', tone: 'mi', freq: 329.63 },
+                    { text: 'The doors are close together.', tone: 'fa', freq: 349.23 },
+                    { text: 'At this spot, you should:', tone: 'sol', freq: 392.00 },
+                    { text: '__SLOT__', tone: 'la', freq: 440.00, slotId: 'slot3' },
+                    { text: 'A familiar wind-chime sound helps you recognize your own door.', tone: 'xi', freq: 493.88, showAfterSlot: 'slot3' }
                 ],
                 optionTexts: [
-                    { text: 'Wait for someone.', correctSlot: null, freq: 261.63 },  // do (wrong)
-                    { text: 'Use your key card.', correctSlot: 'slot3', freq: 329.63 },  // mi (correct)
-                    { text: 'Ring the doorbell.', correctSlot: null, freq: 349.23 }  // fa (wrong)
+                    { text: 'Go to the left door.', correctSlot: null, freq: 329.63 },  // mi (wrong)
+                    { text: 'Go to the middle door.', correctSlot: 'slot3', freq: 440.00 },  // la (correct)
+                    { text: 'Go to the right door.', correctSlot: null, freq: 261.63 }  // do (wrong)
                 ]
             }
         ];
@@ -465,12 +466,14 @@
                 349.23: '4.F(fa).mp3',
                 392.00: '5.G(sol).mp3',
                 440.00: '6.A(la).mp3',
+                493.88: '7.B(xi).mp3',
                 523.26: '1.C(do).mp3',
                 587.33: '2.D(re).mp3',
                 659.25: '3.E(mi).mp3',
                 698.46: '4.F(fa).mp3',
                 783.99: '5.G(sol).mp3',
-                880.00: '6.A(la).mp3'
+                880.00: '6.A(la).mp3',
+                987.77: '7.B(xi).mp3'
             },
             init() {
                 this.preloadSounds();
@@ -482,7 +485,8 @@
                     '3.E(mi).mp3',
                     '4.F(fa).mp3',
                     '5.G(sol).mp3',
-                    '6.A(la).mp3'
+                    '6.A(la).mp3',
+                    '7.B(xi).mp3'
                 ];
 
                 files.forEach(file => {
