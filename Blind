@@ -115,8 +115,7 @@
             position: absolute;
             top: -40px;
             left: 0;
-            width: 100%;
-            text-align: center;
+            text-align: left;
             font-size: 56px;
             color: rgba(120, 120, 120, 0.8);
             white-space: nowrap;
@@ -428,6 +427,7 @@
             lastPinchState: false,
             pinchStableFrames: 0,
             currentTouchedOption: null,  // 当前触摸的选项
+            touchDisabled: false,  // 触控是否被禁用
             // 页面状态
             pageStates: {
                 1: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] },
@@ -805,14 +805,15 @@
                     // 播放音调
                     Audio.playTone(textData.freq);
 
-                    // 模糊文本（延长2秒，现在是3秒）
+                    // 模糊文本（前两句1.8秒，其他3秒）
+                    const blurDelay = pageState.textIndex < 2 ? 1800 : 3000;
                     setTimeout(() => {
                         textDiv.classList.add('blurred');
 
                         // 继续下一个
                         pageState.textIndex++;
                         showNextInitialText(pageNum);
-                    }, 3000);
+                    }, blurDelay);
                 }, 100);
             }
         }
@@ -958,7 +959,6 @@
                 filledText = document.createElement('div');
                 filledText.className = 'filled-text';
                 filledText.textContent = option.text;
-                filledText.style.textAlign = 'right';  // 右对齐
                 slotElement.appendChild(filledText);
             }
 
@@ -967,22 +967,46 @@
 
             // 检查是否正确
             if (option.correctSlot !== slotId) {
-                // 错误：从上到下播报所有文字
+                // 错误：禁用触控
+                state.touchDisabled = true;
+
                 const container = document.getElementById(`initialText${state.currentPage}`);
                 const allTexts = container.querySelectorAll('.initial-text');
 
                 let delay = 0;
-                const playInterval = 400;  // 每个音间隔400ms
+                const playInterval = 900;  // 每个音间隔900ms
 
-                // 播报已显示的初始文字
-                allTexts.forEach((textDiv, index) => {
+                // 播报前两个初始句子
+                for (let i = 0; i < Math.min(2, allTexts.length); i++) {
+                    const textDiv = allTexts[i];
                     setTimeout(() => {
-                        if (pageData.initialTexts[index]) {
-                            Audio.playTone(pageData.initialTexts[index].freq);
+                        // 播放音调
+                        if (pageData.initialTexts[i]) {
+                            Audio.playTone(pageData.initialTexts[i].freq);
                         }
+                        // 亮起文字
+                        textDiv.classList.add('touched');
+                        setTimeout(() => {
+                            textDiv.classList.remove('touched');
+                        }, 400);
                     }, delay);
                     delay += playInterval;
-                });
+                }
+
+                // 播报填入的错误选项的音调
+                setTimeout(() => {
+                    Audio.playTone(option.freq);
+                    // 亮起填入的文字
+                    if (filledText) {
+                        filledText.style.opacity = '1';
+                        filledText.style.color = 'rgba(200, 200, 200, 0.9)';
+                        setTimeout(() => {
+                            filledText.style.opacity = '';
+                            filledText.style.color = '';
+                        }, 400);
+                    }
+                }, delay);
+                delay += playInterval;
 
                 // 播报完成后，抖动并吐出
                 setTimeout(() => {
@@ -1003,10 +1027,15 @@
 
                                         // 恢复原选项显示
                                         option.element.style.display = '';
+
+                                        // 恢复触控
+                                        state.touchDisabled = false;
                                     }, 100);
                                 }, 100);
                             }, 100);
                         }, 100);
+                    } else {
+                        state.touchDisabled = false;
                     }
                 }, delay + 200);
 
@@ -1031,10 +1060,11 @@
                     textDiv.classList.add('visible');
                     Audio.playTone(nextText.freq);
 
+                    // 显示3秒后模糊
                     setTimeout(() => {
                         textDiv.classList.add('blurred');
                         checkPageCompletion();
-                    }, 1000);
+                    }, 3000);
                 }, 500);
             } else {
                 checkPageCompletion();
@@ -1110,7 +1140,7 @@
         }
 
         function checkOptionTouch(x, y) {
-            if (state.dragging || state.isPinching) return;
+            if (state.dragging || state.isPinching || state.touchDisabled) return;
 
             let touchedOption = null;
             const pageState = state.pageStates[state.currentPage];
@@ -1144,6 +1174,8 @@
 
         // 检测模糊文字触摸
         function checkBlurredTextTouch(x, y) {
+            if (state.touchDisabled) return;
+
             const container = document.getElementById(`initialText${state.currentPage}`);
             if (!container) return;
 
