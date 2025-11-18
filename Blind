@@ -365,20 +365,19 @@
     <script>
         // ============= 页面数据 =============
         const pagesData = [
-            // 页面1: 地铁出口场景
+            // 页面1: 导航场景
             {
                 id: 1,
                 initialTexts: [
-                    { text: 'You leave the subway.', tone: 'do', freq: 261.63 },
-                    { text: 'Traffic is loud.', tone: 're', freq: 293.66 },
-                    { text: 'At the curb, you should:', tone: 'mi', freq: 329.63 },
-                    { text: '__SLOT__', tone: 'fa', freq: 349.23, slotId: 'slot1' },
-                    { text: 'You move safely.', tone: 'sol', freq: 392.00, showAfterSlot: 'slot1' }
+                    { text: 'You are Your Way Home.', tone: 'do', freq: 261.63 },
+                    { text: 'At the next intersection, you should:', tone: 're', freq: 293.66 },
+                    { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
+                    { text: 'Based on the sound, you are safely crossed this intersection.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
                 ],
                 optionTexts: [
-                    { text: 'Turn right.', correctSlot: 'slot1', freq: 349.23 },  // fa (correct)
-                    { text: 'Step forward.', correctSlot: null, freq: 261.63 },  // do (wrong)
-                    { text: 'Wait.', correctSlot: null, freq: 329.63 }  // mi (wrong)
+                    { text: 'Go straight.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Turn Left.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
+                    { text: 'Turn Right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
                 ]
             },
             // 页面2: 购物场景
@@ -1107,9 +1106,8 @@
                         textDiv.classList.add('visible');
                         Audio.playTone(nextText.freq);
 
-                        // 显示3秒后模糊
+                        // 结果句子保持清晰，3秒后检查页面完成
                         setTimeout(() => {
-                            textDiv.classList.add('blurred');
                             checkPageCompletion();
                         }, 3000);
                     }, 100);
