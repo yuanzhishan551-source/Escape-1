@@ -118,11 +118,11 @@
 
         /* SVG 场景层 - 选项文字 */
         .scene-svg {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
             z-index: 5;
         }
@@ -740,16 +740,8 @@
         function handlePinchMove(x, y) {
             if (!state.dragging) return;
 
-            // 转换viewport坐标到SVG坐标
-            const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
-            if (!currentSvg) return;
-
-            const svgRect = currentSvg.getBoundingClientRect();
-            const svgX = x - svgRect.left;
-            const svgY = y - svgRect.top;
-
-            const newX = svgX - state.dragOffset.x;
-            const newY = svgY - state.dragOffset.y;
+            const newX = x - state.dragOffset.x;
+            const newY = y - state.dragOffset.y;
 
             state.dragging.x = newX;
             state.dragging.y = newY;
@@ -862,9 +854,9 @@
                 let validPosition = false;
 
                 do {
-                    // SVG坐标相对于page，不需要加rect.left/top
-                    x = 150 + Math.random() * (rect.width - 300);
-                    y = 200 + Math.random() * (rect.height - 400);
+                    // SVG使用fixed定位，坐标是viewport坐标
+                    x = rect.left + 150 + Math.random() * (rect.width - 300);
+                    y = rect.top + 200 + Math.random() * (rect.height - 400);
                     attempts++;
 
                     // 检查是否与已有选项重叠
@@ -913,18 +905,10 @@
             const option = findOptionAtPosition(x, y);
             if (!option || option.placed) return;
 
-            // 转换viewport坐标到SVG坐标
-            const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
-            if (!currentSvg) return;
-
-            const svgRect = currentSvg.getBoundingClientRect();
-            const svgX = x - svgRect.left;
-            const svgY = y - svgRect.top;
-
             state.dragging = option;
             state.dragOffset = {
-                x: svgX - option.x,
-                y: svgY - option.y
+                x: x - option.x,
+                y: y - option.y
             };
 
             option.element.classList.add('dragging');
@@ -961,22 +945,14 @@
         function findOptionAtPosition(x, y) {
             const pageState = state.pageStates[state.currentPage];
 
-            // 转换viewport坐标到SVG坐标
-            const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
-            if (!currentSvg) return null;
-
-            const svgRect = currentSvg.getBoundingClientRect();
-            const svgX = x - svgRect.left;
-            const svgY = y - svgRect.top;
-
             for (let option of pageState.optionElements) {
                 if (option.placed) continue;
 
                 const estimatedWidth = option.text.length * 18;
                 const estimatedHeight = 36;
 
-                if (svgX >= option.x - estimatedWidth/2 && svgX <= option.x + estimatedWidth/2 &&
-                    svgY >= option.y - estimatedHeight/2 && svgY <= option.y + estimatedHeight/2) {
+                if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
+                    y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
                     return option;
                 }
             }
@@ -1082,17 +1058,11 @@
             el.touchCircle.style.left = x + 'px';
             el.touchCircle.style.top = y + 'px';
 
-            // 更新当前页面的遮罩圆位置（转换为SVG坐标）
-            const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
+            // 更新当前页面的遮罩圆位置（直接使用viewport坐标）
             const maskCircle = document.getElementById(`maskCircle${state.currentPage}`);
-
-            if (currentSvg && maskCircle) {
-                const svgRect = currentSvg.getBoundingClientRect();
-                const svgX = x - svgRect.left;
-                const svgY = y - svgRect.top;
-
-                maskCircle.setAttribute('cx', svgX);
-                maskCircle.setAttribute('cy', svgY);
+            if (maskCircle) {
+                maskCircle.setAttribute('cx', x);
+                maskCircle.setAttribute('cy', y);
             }
 
             // 检测触摸的选项文本并播放音调
@@ -1105,23 +1075,15 @@
             let touchedOption = null;
             const pageState = state.pageStates[state.currentPage];
 
-            // 转换viewport坐标到SVG坐标
-            const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
-            if (!currentSvg) return;
-
-            const svgRect = currentSvg.getBoundingClientRect();
-            const svgX = x - svgRect.left;
-            const svgY = y - svgRect.top;
-
-            // 检测触摸到的选项
+            // 检测触摸到的选项（直接使用viewport坐标）
             for (let option of pageState.optionElements) {
                 if (option.placed) continue;
 
                 const estimatedWidth = option.text.length * 18;
                 const estimatedHeight = 36;
 
-                if (svgX >= option.x - estimatedWidth/2 && svgX <= option.x + estimatedWidth/2 &&
-                    svgY >= option.y - estimatedHeight/2 && svgY <= option.y + estimatedHeight/2) {
+                if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
+                    y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
                     touchedOption = option;
                     break;
                 }
@@ -1144,16 +1106,8 @@
             if (state.dragging) {
                 e.preventDefault();
 
-                // 转换viewport坐标到SVG坐标
-                const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
-                if (!currentSvg) return;
-
-                const svgRect = currentSvg.getBoundingClientRect();
-                const svgX = e.clientX - svgRect.left;
-                const svgY = e.clientY - svgRect.top;
-
-                const newX = svgX - state.dragOffset.x;
-                const newY = svgY - state.dragOffset.y;
+                const newX = e.clientX - state.dragOffset.x;
+                const newY = e.clientY - state.dragOffset.y;
 
                 state.dragging.x = newX;
                 state.dragging.y = newY;
@@ -1179,16 +1133,8 @@
             if (state.dragging) {
                 e.preventDefault();
 
-                // 转换viewport坐标到SVG坐标
-                const currentSvg = document.getElementById(`sceneSvg${state.currentPage}`);
-                if (!currentSvg) return;
-
-                const svgRect = currentSvg.getBoundingClientRect();
-                const svgX = touch.clientX - svgRect.left;
-                const svgY = touch.clientY - svgRect.top;
-
-                const newX = svgX - state.dragOffset.x;
-                const newY = svgY - state.dragOffset.y;
+                const newX = touch.clientX - state.dragOffset.x;
+                const newY = touch.clientY - state.dragOffset.y;
 
                 state.dragging.x = newX;
                 state.dragging.y = newY;
