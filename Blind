@@ -799,14 +799,14 @@
                     // 播放音调
                     Audio.playTone(textData.freq);
 
-                    // 模糊文本
+                    // 模糊文本（延长2秒，现在是3秒）
                     setTimeout(() => {
                         textDiv.classList.add('blurred');
 
                         // 继续下一个
                         pageState.textIndex++;
                         showNextInitialText(pageNum);
-                    }, 1000);
+                    }, 3000);
                 }, 100);
             }
         }
@@ -830,10 +830,20 @@
             // 随机打乱选项
             const shuffled = [...pageData.optionTexts].sort(() => Math.random() - 0.5);
 
+            // 定义不同角落的位置
+            const positions = [
+                { x: window.innerWidth * 0.1, y: window.innerHeight * 0.2 },   // 左上
+                { x: window.innerWidth * 0.8, y: window.innerHeight * 0.3 },   // 右上
+                { x: window.innerWidth * 0.15, y: window.innerHeight * 0.7 },  // 左下
+                { x: window.innerWidth * 0.75, y: window.innerHeight * 0.8 },  // 右下
+                { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 },   // 中间
+            ];
+
             shuffled.forEach((option, index) => {
-                // 固定位置：第二句话的y轴，x往右移动50
-                const x = rect.left + 100 + 50;  // 页面左边 + 100 + 50
-                const y = rect.top + 180 + (index * 60);  // 第二句话附近，每个选项间隔60px
+                // 在不同角落放置文字
+                const pos = positions[index % positions.length];
+                const x = pos.x + (Math.random() - 0.5) * 50;  // 加一点随机偏移
+                const y = pos.y + (Math.random() - 0.5) * 50;
 
                 console.log(`Option ${index}: "${option.text}" at (${x}, ${y})`);
 
