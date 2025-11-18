@@ -113,7 +113,7 @@
         .slot-line {
             width: 250px;
             height: 1px;
-            background: rgba(100, 100, 100, 0.4);
+            background: rgba(180, 180, 180, 0.6);
             position: relative;
             transition: background 0.3s;
         }
@@ -583,7 +583,7 @@
         // 绘制初始提示手部骨架（静态）
         function drawHintHand() {
             // 创建一个居中的静态手部姿势 - 五指并拢伸直
-            const centerX = 0.5;
+            const centerX = 0.75; // 移到右边，在平行线与屏幕边缘的中间
             const centerY = 0.5;
             const scale = 0.375; // 缩小到1/4
 
