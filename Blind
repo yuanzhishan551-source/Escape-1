@@ -391,7 +391,7 @@
                     { text: 'The sound of the wind chimes is getting clearer - you\'re almost home.', tone: 'la', freq: 440.00, showAfterSlot: 'slot2' }
                 ],
                 optionTexts: [
-                    { text: 'Turn toward the barking dog.', correctSlot: null, freq: 493.88 },  // xi (wrong)
+                    { text: 'Turn toward the barking dog.', correctSlot: null, freq: 261.63 },  // do (wrong)
                     { text: 'Follow the children\'s voices.', correctSlot: null, freq: 329.63 },  // mi (wrong)
                     { text: 'Continue on the tactile path.', correctSlot: 'slot2', freq: 392.00 }  // sol (correct)
                 ]
