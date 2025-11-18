@@ -341,9 +341,6 @@
     <!-- 触摸圈 -->
     <div class="touch-circle" id="touchCircle"></div>
 
-    <!-- 调试按钮 -->
-    <button id="debugBtn" style="position: fixed; top: 10px; left: 10px; z-index: 9999; padding: 10px; background: red; color: white;">Toggle Mask</button>
-
     <!-- 手部骨架画布 -->
     <canvas id="handCanvas" class="hint-mode"></canvas>
 
@@ -1380,26 +1377,9 @@
                 }
             }, 1000);
 
-            // 调试按钮：切换遮罩
-            let maskEnabled = true;
-            document.getElementById('debugBtn').addEventListener('click', () => {
-                const sentenceLayer = document.getElementById('sentenceLayer');
-                maskEnabled = !maskEnabled;
-                if (maskEnabled) {
-                    sentenceLayer.setAttribute('mask', 'url(#touchMask)');
-                    console.log('Mask ENABLED');
-                } else {
-                    sentenceLayer.removeAttribute('mask');
-                    console.log('Mask DISABLED - all text should be visible');
-                }
-            });
-
-            // 事件监听
-            document.addEventListener('mousemove', onMouseMove);
+            // 事件监听 - 只支持触摸/手势交互
             document.addEventListener('touchmove', onTouchMove, { passive: false });
-            document.addEventListener('mousedown', onMouseDown);
             document.addEventListener('touchstart', onTouchStart, { passive: false });
-            document.addEventListener('mouseup', endDrag);
             document.addEventListener('touchend', endDrag);
             el.soundToggle.addEventListener('click', toggleSound);
 
