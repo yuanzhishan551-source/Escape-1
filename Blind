@@ -790,6 +790,7 @@
             dragOffset: { x: 0, y: 0 },
             // 手势识别相关
             handDetected: false,
+            hasHandBeenDetected: false,  // 是否曾经检测到过手
             isPinching: false,
             pinchPoint: { x: 0, y: 0 },
             lastPinchState: false,
@@ -885,6 +886,24 @@
                 setTimeout(() => this.playTone(659.25), 150);
                 setTimeout(() => this.playTone(783.99), 300);
                 setTimeout(() => this.playTone(1046.50), 450);
+            },
+            speak(text, callback) {
+                if (!state.soundOn || !window.speechSynthesis) {
+                    if (callback) callback();
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+                utterance.volume = 0.8;
+
+                if (callback) {
+                    utterance.onend = callback;
+                }
+
+                window.speechSynthesis.speak(utterance);
             }
         };
 
@@ -1002,6 +1021,7 @@
 
                 if (!state.handDetected) {
                     state.handDetected = true;
+                    state.hasHandBeenDetected = true;  // 永久记录曾检测到手
                     el.handCanvas.classList.remove('hint-mode');
                     el.handCanvas.classList.add('tracking-mode');
                 }
@@ -1072,8 +1092,11 @@
                         endDrag({ clientX: state.pinchPoint.x, clientY: state.pinchPoint.y });
                     }
                     el.handCanvas.classList.remove('tracking-mode');
-                    el.handCanvas.classList.add('hint-mode');
-                    drawHintHand();
+                    // 曾检测到手后不再显示提示手
+                    if (!state.hasHandBeenDetected) {
+                        el.handCanvas.classList.add('hint-mode');
+                        drawHintHand();
+                    }
                 }
                 state.handDetected = false;
                 state.lastPinchState = false;
@@ -1164,28 +1187,24 @@
                 pageState.textIndex++;
                 setTimeout(() => showNextInitialText(pageNum), 1000);
             } else {
-                // 创建普通文本
+                // 创建普通文本 - 初始就是模糊状态
                 const textDiv = document.createElement('div');
-                textDiv.className = 'initial-text';
+                textDiv.className = 'initial-text visible blurred';
                 textDiv.textContent = textData.text;
                 container.appendChild(textDiv);
 
-                // 显示文本
+                // 播放音调，然后朗读文字
                 setTimeout(() => {
-                    textDiv.classList.add('visible');
-
-                    // 播放音调
                     Audio.playTone(textData.freq);
 
-                    // 模糊文本（前两句1.8秒，其他3秒）
-                    const blurDelay = pageState.textIndex < 2 ? 1800 : 3000;
+                    // 音调播放后朗读文字
                     setTimeout(() => {
-                        textDiv.classList.add('blurred');
-
-                        // 继续下一个
-                        pageState.textIndex++;
-                        showNextInitialText(pageNum);
-                    }, blurDelay);
+                        Audio.speak(textData.text, () => {
+                            // 朗读完成后继续下一个
+                            pageState.textIndex++;
+                            showNextInitialText(pageNum);
+                        });
+                    }, 500);  // 等待音调播放完
                 }, 100);
             }
         }
@@ -1755,7 +1774,7 @@
             window.addEventListener('resize', () => {
                 el.handCanvas.width = window.innerWidth;
                 el.handCanvas.height = window.innerHeight;
-                if (!state.handDetected) {
+                if (!state.handDetected && !state.hasHandBeenDetected) {
                     drawHintHand();
                 }
             });
