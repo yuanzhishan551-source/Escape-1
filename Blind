@@ -369,15 +369,16 @@
             {
                 id: 1,
                 initialTexts: [
-                    { text: 'You leave the subway. Traffic is loud.', tone: 'do', freq: 261.63 },
-                    { text: 'You hear a familiar bus engine ahead. At the curb, you should:', tone: 're', freq: 293.66 },
-                    { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
-                    { text: 'You follow the engine\'s direction and move safely.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
+                    { text: 'You leave the subway.', tone: 'do', freq: 261.63 },
+                    { text: 'Traffic is loud.', tone: 're', freq: 293.66 },
+                    { text: 'At the curb, you should:', tone: 'mi', freq: 329.63 },
+                    { text: '__SLOT__', tone: 'fa', freq: 349.23, slotId: 'slot1' },
+                    { text: 'You move safely.', tone: 'sol', freq: 392.00, showAfterSlot: 'slot1' }
                 ],
                 optionTexts: [
-                    { text: 'Step forward.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
-                    { text: 'Wait.', correctSlot: null, freq: 261.63 },  // do (wrong)
-                    { text: 'Turn right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
+                    { text: 'Turn right.', correctSlot: 'slot1', freq: 349.23 },  // fa (correct)
+                    { text: 'Step forward.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Wait.', correctSlot: null, freq: 329.63 }  // mi (wrong)
                 ]
             },
             // 页面2: 购物场景
