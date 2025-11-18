@@ -305,7 +305,7 @@
                         </radialGradient>
                         <mask id="touchMask1">
                             <rect width="100%" height="100%" fill="black"/>
-                            <circle id="maskCircle1" r="50" fill="url(#touchGradient1)"/>
+                            <circle id="maskCircle1" r="80" fill="url(#touchGradient1)"/>
                         </mask>
                     </defs>
                     <g id="sentenceLayer1" mask="url(#touchMask1)"></g>
@@ -329,7 +329,7 @@
                         </radialGradient>
                         <mask id="touchMask2">
                             <rect width="100%" height="100%" fill="black"/>
-                            <circle id="maskCircle2" r="50" fill="url(#touchGradient2)"/>
+                            <circle id="maskCircle2" r="80" fill="url(#touchGradient2)"/>
                         </mask>
                     </defs>
                     <g id="sentenceLayer2" mask="url(#touchMask2)"></g>
@@ -353,7 +353,7 @@
                         </radialGradient>
                         <mask id="touchMask3">
                             <rect width="100%" height="100%" fill="black"/>
-                            <circle id="maskCircle3" r="50" fill="url(#touchGradient3)"/>
+                            <circle id="maskCircle3" r="80" fill="url(#touchGradient3)"/>
                         </mask>
                     </defs>
                     <g id="sentenceLayer3" mask="url(#touchMask3)"></g>
@@ -396,9 +396,9 @@
                     { text: 'Based on the sound, you are safely crossed this intersection.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
                 ],
                 optionTexts: [
-                    { text: 'Go straight.', correctSlot: null },
-                    { text: 'Turn Left.', correctSlot: 'slot1' },
-                    { text: 'Turn Right.', correctSlot: null }
+                    { text: 'Go straight.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Turn Left.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
+                    { text: 'Turn Right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
                 ]
             },
             // 页面2: 购物场景
@@ -411,9 +411,9 @@
                     { text: 'You successfully found the item by its sound.', tone: 're', freq: 587.33, showAfterSlot: 'slot2' }
                 ],
                 optionTexts: [
-                    { text: 'The milk section.', correctSlot: 'slot2' },
-                    { text: 'The bread aisle.', correctSlot: null },
-                    { text: 'The checkout counter.', correctSlot: null }
+                    { text: 'The milk section.', correctSlot: 'slot2', freq: 329.63 },  // mi (correct)
+                    { text: 'The bread aisle.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'The checkout counter.', correctSlot: null, freq: 349.23 }  // fa (wrong)
                 ]
             },
             // 页面3: 回家场景
@@ -426,9 +426,9 @@
                     { text: 'You made it home safely. Welcome home.', tone: 'la', freq: 880.00, showAfterSlot: 'slot3' }
                 ],
                 optionTexts: [
-                    { text: 'Wait for someone.', correctSlot: null },
-                    { text: 'Use your key card.', correctSlot: 'slot3' },
-                    { text: 'Ring the doorbell.', correctSlot: null }
+                    { text: 'Wait for someone.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Use your key card.', correctSlot: 'slot3', freq: 329.63 },  // mi (correct)
+                    { text: 'Ring the doorbell.', correctSlot: null, freq: 349.23 }  // fa (wrong)
                 ]
             }
         ];
@@ -447,6 +447,7 @@
             pinchPoint: { x: 0, y: 0 },
             lastPinchState: false,
             pinchStableFrames: 0,
+            currentTouchedOption: null,  // 当前触摸的选项
             // 页面状态
             pageStates: {
                 1: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] },
@@ -885,6 +886,7 @@
                 pageState.optionElements.push({
                     text: option.text,
                     correctSlot: option.correctSlot,
+                    freq: option.freq,  // 添加频率
                     x: x,
                     y: y,
                     element: textGroup,
@@ -1058,6 +1060,39 @@
                     maskCircle.setAttribute('cx', x);
                     maskCircle.setAttribute('cy', y);
                 }
+            }
+
+            // 检测触摸的选项文本并播放音调
+            checkOptionTouch(x, y);
+        }
+
+        function checkOptionTouch(x, y) {
+            if (state.dragging || state.isPinching) return;
+
+            let touchedOption = null;
+            const pageState = state.pageStates[state.currentPage];
+
+            // 检测触摸到的选项
+            for (let option of pageState.optionElements) {
+                if (option.placed) continue;
+
+                const estimatedWidth = option.text.length * 18;
+                const estimatedHeight = 36;
+
+                if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
+                    y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
+                    touchedOption = option;
+                    break;
+                }
+            }
+
+            // 只有当触摸到新选项时才播放音效
+            if (touchedOption && touchedOption !== state.currentTouchedOption) {
+                Audio.playTone(touchedOption.freq);
+                state.currentTouchedOption = touchedOption;
+            } else if (!touchedOption) {
+                // 离开所有选项时，重置
+                state.currentTouchedOption = null;
             }
         }
 
