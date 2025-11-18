@@ -369,15 +369,15 @@
             {
                 id: 1,
                 initialTexts: [
-                    { text: 'You leave the subway. Traffic is loud.', tone: 'do', freq: 261.63 },
-                    { text: 'You hear a familiar bus engine. At the curb, you should:', tone: 're', freq: 293.66 },
-                    { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
-                    { text: 'You follow the engine\'s direction and move safely.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
+                    { text: 'You leave the subway.', tone: 'do', freq: 261.63 },
+                    { text: 'Traffic is loud.', tone: 're', freq: 293.66 },
+                    { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1', prefix: 'At the curb, you should:' },
+                    { text: 'You move safely.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
                 ],
                 optionTexts: [
                     { text: 'Step forward.', correctSlot: null, freq: 261.63 },  // do (wrong)
-                    { text: 'Wait.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
-                    { text: 'Turn right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
+                    { text: 'Wait.', correctSlot: null, freq: 293.66 },  // re (wrong)
+                    { text: 'Turn right.', correctSlot: 'slot1', freq: 329.63 }  // mi (correct)
                 ]
             },
             // 页面2: 购物场景
@@ -783,7 +783,8 @@
                 // 创建槽位线
                 const slotDiv = document.createElement('div');
                 slotDiv.className = 'initial-text visible';
-                slotDiv.innerHTML = `<span class="slot-line-inline" data-slot="${textData.slotId}"></span>`;
+                const prefix = textData.prefix ? textData.prefix + ' ' : '';
+                slotDiv.innerHTML = `${prefix}<span class="slot-line-inline" data-slot="${textData.slotId}"></span>`;
                 container.appendChild(slotDiv);
 
                 // 播放音调
