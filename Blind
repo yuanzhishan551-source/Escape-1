@@ -764,7 +764,8 @@
             const container = document.getElementById(`initialText${pageNum}`);
 
             if (pageState.textIndex >= pageData.initialTexts.length) {
-                // 所有初始文字已显示
+                // 所有初始文字已显示，恢复触控
+                state.touchDisabled = false;
                 return;
             }
 
@@ -1046,28 +1047,76 @@
             option.placed = true;
             pageState.slotsFilled[slotId] = true;
 
-            // 检查是否有需要显示的后续文本
+            // 禁用触控
+            state.touchDisabled = true;
+
+            // 从头播放音节并取消模糊
+            const container = document.getElementById(`initialText${state.currentPage}`);
+            const allTexts = container.querySelectorAll('.initial-text');
+
+            let delay = 0;
+            const playInterval = 900;
+
+            // 播放前两个初始句子的音节并取消模糊
+            for (let i = 0; i < Math.min(2, allTexts.length); i++) {
+                const textDiv = allTexts[i];
+                setTimeout(() => {
+                    if (pageData.initialTexts[i]) {
+                        Audio.playTone(pageData.initialTexts[i].freq);
+                    }
+                    // 取消模糊
+                    textDiv.classList.remove('blurred');
+                    textDiv.classList.add('touched');
+                    setTimeout(() => {
+                        textDiv.classList.remove('touched');
+                    }, 400);
+                }, delay);
+                delay += playInterval;
+            }
+
+            // 播放第三个音节（槽位/填入的文字）
+            setTimeout(() => {
+                // 找到槽位对应的初始文字数据
+                const slotTextData = pageData.initialTexts.find(t => t.slotId === slotId);
+                if (slotTextData) {
+                    Audio.playTone(slotTextData.freq);
+                }
+                // 亮起填入的文字
+                if (filledText) {
+                    filledText.style.opacity = '1';
+                    filledText.style.color = 'rgba(200, 200, 200, 0.9)';
+                    setTimeout(() => {
+                        filledText.style.opacity = '';
+                        filledText.style.color = '';
+                    }, 400);
+                }
+            }, delay);
+            delay += playInterval;
+
+            // 检查是否有需要显示的后续文本（第四句）
             const nextText = pageData.initialTexts.find(t => t.showAfterSlot === slotId);
             if (nextText) {
-                const container = document.getElementById(`initialText${state.currentPage}`);
-
-                const textDiv = document.createElement('div');
-                textDiv.className = 'initial-text';
-                textDiv.textContent = nextText.text;
-                container.appendChild(textDiv);
-
                 setTimeout(() => {
-                    textDiv.classList.add('visible');
-                    Audio.playTone(nextText.freq);
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'initial-text';
+                    textDiv.textContent = nextText.text;
+                    container.appendChild(textDiv);
 
-                    // 显示3秒后模糊
                     setTimeout(() => {
-                        textDiv.classList.add('blurred');
-                        checkPageCompletion();
-                    }, 3000);
-                }, 500);
+                        textDiv.classList.add('visible');
+                        Audio.playTone(nextText.freq);
+
+                        // 显示3秒后模糊
+                        setTimeout(() => {
+                            textDiv.classList.add('blurred');
+                            checkPageCompletion();
+                        }, 3000);
+                    }, 100);
+                }, delay);
             } else {
-                checkPageCompletion();
+                setTimeout(() => {
+                    checkPageCompletion();
+                }, delay);
             }
         }
 
