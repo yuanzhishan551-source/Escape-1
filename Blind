@@ -336,6 +336,9 @@
     <!-- 触摸圈 -->
     <div class="touch-circle" id="touchCircle"></div>
 
+    <!-- 调试按钮 -->
+    <button id="debugBtn" style="position: fixed; top: 10px; left: 10px; z-index: 9999; padding: 10px; background: red; color: white;">Toggle Mask</button>
+
     <!-- 手部骨架画布 -->
     <canvas id="handCanvas" class="hint-mode"></canvas>
 
@@ -815,6 +818,12 @@
             const page = document.getElementById(`page${pageNum}`);
             const rect = page.getBoundingClientRect();
 
+            console.log('=== initOptionTexts DEBUG ===');
+            console.log('pageNum:', pageNum);
+            console.log('svgLayer exists:', !!svgLayer);
+            console.log('page rect:', rect);
+            console.log('currentPage:', state.currentPage);
+
             // 调试：只生成页面1的文字，放在固定位置
             if (pageNum !== 1) return;
 
@@ -825,6 +834,8 @@
                 // 固定位置：第二句话的y轴，x往右移动50
                 const x = rect.left + 100 + 50;  // 页面左边 + 100 + 50
                 const y = rect.top + 180 + (index * 60);  // 第二句话附近，每个选项间隔60px
+
+                console.log(`Option ${index}: "${option.text}" at (${x}, ${y})`);
 
                 // 创建SVG文本
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -851,6 +862,9 @@
                     placed: false
                 });
             });
+
+            console.log('Total SVG children:', svgLayer.children.length);
+            console.log('optionElements:', pageState.optionElements.length);
         }
 
         // ============= 拖拽处理 =============
@@ -1022,6 +1036,9 @@
             if (maskCircle) {
                 maskCircle.setAttribute('cx', x);
                 maskCircle.setAttribute('cy', y);
+                console.log(`Mask circle updated: (${x}, ${y})`);
+            } else {
+                console.error('maskCircle not found!');
             }
 
             // 检测触摸的选项文本并播放音调
@@ -1138,6 +1155,33 @@
 
             // 初始化第一页
             initPage(1);
+
+            // 调试：打印DOM信息
+            setTimeout(() => {
+                const svgLayer = document.getElementById('sentenceLayer');
+                const maskCircle = document.getElementById('maskCircle');
+                console.log('=== POST-INIT DEBUG ===');
+                console.log('sentenceLayer children:', svgLayer ? svgLayer.children.length : 'NOT FOUND');
+                console.log('maskCircle:', maskCircle ? `exists at (${maskCircle.getAttribute('cx')}, ${maskCircle.getAttribute('cy')})` : 'NOT FOUND');
+                console.log('Page 1 optionElements:', state.pageStates[1].optionElements.length);
+                if (svgLayer && svgLayer.children.length > 0) {
+                    console.log('First SVG text element:', svgLayer.children[0]);
+                }
+            }, 1000);
+
+            // 调试按钮：切换遮罩
+            let maskEnabled = true;
+            document.getElementById('debugBtn').addEventListener('click', () => {
+                const sentenceLayer = document.getElementById('sentenceLayer');
+                maskEnabled = !maskEnabled;
+                if (maskEnabled) {
+                    sentenceLayer.setAttribute('mask', 'url(#touchMask)');
+                    console.log('Mask ENABLED');
+                } else {
+                    sentenceLayer.removeAttribute('mask');
+                    console.log('Mask DISABLED - all text should be visible');
+                }
+            });
 
             // 事件监听
             document.addEventListener('mousemove', onMouseMove);
