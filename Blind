@@ -798,7 +798,9 @@
 
             // 检查是否需要等待槽位填充
             if (textData.showAfterSlot) {
-                // 这个文本需要等待槽位填充后才显示
+                // 这个文本需要等待槽位填充后才显示，跳过它继续下一个
+                pageState.textIndex++;
+                showNextInitialText(pageNum);
                 return;
             }
 
