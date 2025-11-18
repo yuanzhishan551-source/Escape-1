@@ -1187,24 +1187,28 @@
                 pageState.textIndex++;
                 setTimeout(() => showNextInitialText(pageNum), 1000);
             } else {
-                // 创建普通文本 - 初始就是模糊状态
+                // 创建普通文本
                 const textDiv = document.createElement('div');
-                textDiv.className = 'initial-text visible blurred';
+                textDiv.className = 'initial-text';
                 textDiv.textContent = textData.text;
                 container.appendChild(textDiv);
 
-                // 播放音调，然后朗读文字
+                // 显示文本
                 setTimeout(() => {
+                    textDiv.classList.add('visible');
+
+                    // 播放音调
                     Audio.playTone(textData.freq);
 
-                    // 音调播放后朗读文字
+                    // 模糊文本（前两句1.8秒，其他3秒）
+                    const blurDelay = pageState.textIndex < 2 ? 1800 : 3000;
                     setTimeout(() => {
-                        Audio.speak(textData.text, () => {
-                            // 朗读完成后继续下一个
-                            pageState.textIndex++;
-                            showNextInitialText(pageNum);
-                        });
-                    }, 500);  // 等待音调播放完
+                        textDiv.classList.add('blurred');
+
+                        // 继续下一个
+                        pageState.textIndex++;
+                        showNextInitialText(pageNum);
+                    }, blurDelay);
                 }, 100);
             }
         }
