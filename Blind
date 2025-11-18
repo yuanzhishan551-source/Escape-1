@@ -50,9 +50,9 @@
 
         .ellipse-1 {
             background: radial-gradient(ellipse at 30% 60%,
-                rgba(120, 120, 120, 0.4) 0%,
-                rgba(80, 80, 80, 0.3) 25%,
-                rgba(40, 40, 40, 0.2) 50%,
+                rgba(60, 60, 60, 0.3) 0%,
+                rgba(40, 40, 40, 0.2) 25%,
+                rgba(20, 20, 20, 0.15) 50%,
                 transparent 70%);
             animation: morph1 25s ease-in-out infinite;
             filter: blur(30px);
@@ -61,8 +61,8 @@
 
         .circle-1 {
             background: radial-gradient(circle at 70% 20%,
-                rgba(100, 100, 100, 0.35) 0%,
-                rgba(60, 60, 60, 0.25) 30%,
+                rgba(50, 50, 50, 0.25) 0%,
+                rgba(30, 30, 30, 0.18) 30%,
                 transparent 60%);
             animation: float1 20s ease-in-out infinite;
             filter: blur(25px);
@@ -72,9 +72,9 @@
         .diagonal-1 {
             background: linear-gradient(45deg,
                 transparent 0%,
-                rgba(90, 90, 90, 0.3) 20%,
-                rgba(110, 110, 110, 0.4) 40%,
-                rgba(70, 70, 70, 0.2) 60%,
+                rgba(45, 45, 45, 0.2) 20%,
+                rgba(55, 55, 55, 0.3) 40%,
+                rgba(35, 35, 35, 0.15) 60%,
                 transparent 80%);
             animation: slide1 30s linear infinite;
             filter: blur(35px);
@@ -97,8 +97,8 @@
             top: 30%;
             left: 20%;
             background: radial-gradient(ellipse at center,
-                rgba(30, 30, 30, 0.7) 0%,
-                rgba(50, 50, 50, 0.4) 40%,
+                rgba(15, 15, 15, 0.5) 0%,
+                rgba(25, 25, 25, 0.3) 40%,
                 transparent 70%);
             border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
             animation: blobMorph 15s ease-in-out infinite;
@@ -113,8 +113,8 @@
             top: 40%;
             right: 10%;
             background: radial-gradient(circle at 40% 40%,
-                rgba(80, 80, 80, 0.5) 0%,
-                rgba(40, 40, 40, 0.3) 50%,
+                rgba(40, 40, 40, 0.35) 0%,
+                rgba(20, 20, 20, 0.2) 50%,
                 transparent 80%);
             border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
             animation: blobMorph2 18s ease-in-out infinite;
@@ -130,7 +130,7 @@
             left: 50%;
             border-left: 200px solid transparent;
             border-right: 200px solid transparent;
-            border-bottom: 350px solid rgba(100, 100, 100, 0.2);
+            border-bottom: 350px solid rgba(50, 50, 50, 0.15);
             animation: triangleRotate 40s linear infinite;
             filter: blur(40px);
             transform: translateZ(-150px);
@@ -152,8 +152,8 @@
             top: 10%;
             left: 10%;
             background: radial-gradient(circle at 60% 40%,
-                rgba(150, 150, 150, 0.2) 0%,
-                rgba(120, 120, 120, 0.1) 20%,
+                rgba(75, 75, 75, 0.15) 0%,
+                rgba(60, 60, 60, 0.08) 20%,
                 transparent 50%);
             animation: glowPulse 20s ease-in-out infinite;
             filter: blur(45px);
@@ -165,8 +165,8 @@
             width: 300px;
             height: 300px;
             background: radial-gradient(circle,
-                rgba(140, 140, 140, 0.3) 0%,
-                rgba(100, 100, 100, 0.15) 40%,
+                rgba(70, 70, 70, 0.2) 0%,
+                rgba(50, 50, 50, 0.1) 40%,
                 transparent 70%);
             animation: orbWander 35s ease-in-out infinite;
             filter: blur(30px);
@@ -563,28 +563,6 @@
             pointer-events: none;
         }
 
-        /* 声音开关 */
-        .sound-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: 1px solid rgba(100, 100, 100, 0.3);
-            color: rgba(150, 150, 150, 0.6);
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            transition: all 0.2s;
-            z-index: 1000;
-        }
-
-        .sound-toggle:hover,
-        .sound-toggle:focus {
-            border-color: rgba(150, 150, 150, 0.5);
-            color: rgba(180, 180, 180, 0.8);
-            outline: none;
-        }
 
         /* 结束画面 */
         .end-screen {
@@ -716,8 +694,6 @@
     <!-- 摄像头视频（隐藏） -->
     <video id="video" autoplay playsinline></video>
 
-    <!-- 声音开关 -->
-    <button class="sound-toggle" id="soundToggle" aria-pressed="true">Sound</button>
 
     <!-- 手部指示点 -->
     <div class="finger-pointer" id="thumbPointer" style="display: none;"></div>
@@ -809,7 +785,6 @@
         const el = {
             pagesContainer: document.getElementById('pagesContainer'),
             touchCircle: document.getElementById('touchCircle'),
-            soundToggle: document.getElementById('soundToggle'),
             endScreen: document.getElementById('endScreen'),
             endMessage: document.getElementById('endMessage'),
             video: document.getElementById('video'),
@@ -1740,7 +1715,6 @@
         // ============= 辅助 =============
         function toggleSound() {
             state.soundOn = !state.soundOn;
-            el.soundToggle.setAttribute('aria-pressed', state.soundOn);
         }
 
         // ============= 初始化 =============
@@ -1773,7 +1747,6 @@
             document.addEventListener('touchmove', onTouchMove, { passive: false });
             document.addEventListener('touchstart', onTouchStart, { passive: false });
             document.addEventListener('touchend', endDrag);
-            el.soundToggle.addEventListener('click', toggleSound);
 
             window.addEventListener('resize', () => {
                 el.handCanvas.width = window.innerWidth;
