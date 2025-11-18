@@ -384,16 +384,16 @@
             {
                 id: 2,
                 initialTexts: [
-                    { text: 'You enter the residential area.', tone: 'sol', freq: 392.00 },
-                    { text: 'The traffic noise gradually fades away.', tone: 'la', freq: 440.00 },
-                    { text: 'Some noisy sounds are heard, you choose:', tone: 'xi', freq: 493.88 },
-                    { text: '__SLOT__', tone: 'do', freq: 523.26, slotId: 'slot2' },
-                    { text: 'The sound of the wind chimes is getting clearer - you\'re almost home.', tone: 're', freq: 587.33, showAfterSlot: 'slot2' }
+                    { text: 'You enter the residential area.', tone: 're', freq: 293.66 },
+                    { text: 'The traffic noise gradually fades away.', tone: 'mi', freq: 329.63 },
+                    { text: 'Some noisy sounds are heard, you choose:', tone: 'fa', freq: 349.23 },
+                    { text: '__SLOT__', tone: 'sol', freq: 392.00, slotId: 'slot2' },
+                    { text: 'The sound of the wind chimes is getting clearer - you\'re almost home.', tone: 'la', freq: 440.00, showAfterSlot: 'slot2' }
                 ],
                 optionTexts: [
-                    { text: 'Turn toward the barking dog.', correctSlot: null, freq: 261.63 },  // do (wrong)
-                    { text: 'Follow the children\'s voices.', correctSlot: null, freq: 349.23 },  // fa (wrong)
-                    { text: 'Continue on the tactile path.', correctSlot: 'slot2', freq: 329.63 }  // mi (correct)
+                    { text: 'Turn toward the barking dog.', correctSlot: null, freq: 493.88 },  // xi (wrong)
+                    { text: 'Follow the children\'s voices.', correctSlot: null, freq: 329.63 },  // mi (wrong)
+                    { text: 'Continue on the tactile path.', correctSlot: 'slot2', freq: 392.00 }  // sol (correct)
                 ]
             },
             // 页面3: 走廊场景
