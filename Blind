@@ -86,14 +86,14 @@
         }
 
         .initial-text.blurred {
-            filter: blur(3px);
-            opacity: 0.5;
+            filter: blur(6px);
+            opacity: 0.4;
             transition: all 0.3s ease;
         }
 
         .initial-text.blurred.touched {
-            filter: blur(2px);
-            opacity: 0.8;
+            filter: blur(4px);
+            opacity: 0.7;
         }
 
         /* 空槽位线 */
@@ -836,13 +836,13 @@
             // 随机打乱选项
             const shuffled = [...pageData.optionTexts].sort(() => Math.random() - 0.5);
 
-            // 定义不同角落的位置
+            // 定义不同角落的位置（避开左上角的初始文字区域）
             const positions = [
-                { x: window.innerWidth * 0.1, y: window.innerHeight * 0.2 },   // 左上
-                { x: window.innerWidth * 0.8, y: window.innerHeight * 0.3 },   // 右上
-                { x: window.innerWidth * 0.15, y: window.innerHeight * 0.7 },  // 左下
-                { x: window.innerWidth * 0.75, y: window.innerHeight * 0.8 },  // 右下
-                { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 },   // 中间
+                { x: window.innerWidth * 0.75, y: window.innerHeight * 0.15 },  // 右上
+                { x: window.innerWidth * 0.7, y: window.innerHeight * 0.5 },    // 右中
+                { x: window.innerWidth * 0.65, y: window.innerHeight * 0.85 },  // 右下
+                { x: window.innerWidth * 0.3, y: window.innerHeight * 0.85 },   // 左下
+                { x: window.innerWidth * 0.5, y: window.innerHeight * 0.7 },    // 中下
             ];
 
             shuffled.forEach((option, index) => {
@@ -948,41 +948,73 @@
             const pageState = state.pageStates[state.currentPage];
             const pageData = pagesData[state.currentPage - 1];
 
-            // 检查是否正确
-            if (option.correctSlot !== slotId) {
-                // 错误，播放错误音效并弹回
-                Audio.playTone(261.63);  // do音表示错误
-
-                // 抖动动画
-                const textEl = option.element.querySelector('text');
-                if (textEl) {
-                    textEl.style.transition = 'transform 0.1s';
-                    textEl.style.transform = 'translateX(10px)';
-                    setTimeout(() => {
-                        textEl.style.transform = 'translateX(-10px)';
-                        setTimeout(() => {
-                            textEl.style.transform = 'translateX(0)';
-                        }, 100);
-                    }, 100);
-                }
-                return;
-            }
-
-            // 正确，放置
-            option.placed = true;
-            option.element.style.display = 'none';
-
-            // 填充槽位
+            // 先填充槽位（无论对错）
             const slotElement = document.querySelector(`.slot-line-inline[data-slot="${slotId}"]`);
+            let filledText = null;
+
             if (slotElement) {
                 slotElement.classList.add('filled');
 
-                const filledText = document.createElement('div');
+                filledText = document.createElement('div');
                 filledText.className = 'filled-text';
                 filledText.textContent = option.text;
+                filledText.style.textAlign = 'right';  // 右对齐
                 slotElement.appendChild(filledText);
             }
 
+            // 隐藏原选项
+            option.element.style.display = 'none';
+
+            // 检查是否正确
+            if (option.correctSlot !== slotId) {
+                // 错误：从上到下播报所有文字
+                const container = document.getElementById(`initialText${state.currentPage}`);
+                const allTexts = container.querySelectorAll('.initial-text');
+
+                let delay = 0;
+                const playInterval = 400;  // 每个音间隔400ms
+
+                // 播报已显示的初始文字
+                allTexts.forEach((textDiv, index) => {
+                    setTimeout(() => {
+                        if (pageData.initialTexts[index]) {
+                            Audio.playTone(pageData.initialTexts[index].freq);
+                        }
+                    }, delay);
+                    delay += playInterval;
+                });
+
+                // 播报完成后，抖动并吐出
+                setTimeout(() => {
+                    if (filledText) {
+                        // 抖动两下
+                        filledText.style.transition = 'transform 0.1s';
+                        filledText.style.transform = 'translateX(10px)';
+                        setTimeout(() => {
+                            filledText.style.transform = 'translateX(-10px)';
+                            setTimeout(() => {
+                                filledText.style.transform = 'translateX(10px)';
+                                setTimeout(() => {
+                                    filledText.style.transform = 'translateX(-10px)';
+                                    setTimeout(() => {
+                                        // 吐出：移除填充的文字
+                                        filledText.remove();
+                                        slotElement.classList.remove('filled');
+
+                                        // 恢复原选项显示
+                                        option.element.style.display = '';
+                                    }, 100);
+                                }, 100);
+                            }, 100);
+                        }, 100);
+                    }
+                }, delay + 200);
+
+                return;
+            }
+
+            // 正确，标记为已放置
+            option.placed = true;
             pageState.slotsFilled[slotId] = true;
 
             // 检查是否有需要显示的后续文本
@@ -1121,7 +1153,14 @@
             blurredTexts.forEach((textDiv, index) => {
                 const rect = textDiv.getBoundingClientRect();
 
-                if (x >= rect.left && x <= rect.right &&
+                // 计算实际文字宽度（基于字符数和字体大小）
+                const textContent = textDiv.textContent || '';
+                const estimatedTextWidth = Math.min(textContent.length * 28, rect.width * 0.8);
+                const textLeft = rect.left;
+                const textRight = rect.left + estimatedTextWidth;
+
+                // 严格检测：只有在文字实际区域内才触发
+                if (x >= textLeft && x <= textRight &&
                     y >= rect.top && y <= rect.bottom) {
 
                     // 检查是否已经触摸过这个文字
