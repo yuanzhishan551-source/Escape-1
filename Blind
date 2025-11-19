@@ -1536,7 +1536,16 @@
         function scrollToPage(pageNum) {
             const page = document.getElementById(`page${pageNum}`);
             if (page) {
-                page.scrollIntoView({ behavior: 'smooth' });
+                // 临时禁用scroll-snap以实现平滑滚动
+                el.pagesContainer.style.scrollSnapType = 'none';
+
+                // 计算目标位置并平滑滚动
+                const targetY = (pageNum - 1) * window.innerHeight;
+                el.pagesContainer.scrollTo({
+                    top: targetY,
+                    behavior: 'smooth'
+                });
+
                 state.currentPage = pageNum;
 
                 // 显示/隐藏对应页面的选项文字
@@ -1545,10 +1554,11 @@
                     option.style.display = option.dataset.page == pageNum ? '' : 'none';
                 });
 
-                // 初始化新页面
+                // 滚动完成后恢复scroll-snap并初始化新页面
                 setTimeout(() => {
+                    el.pagesContainer.style.scrollSnapType = 'y mandatory';
                     initPage(pageNum);
-                }, 800);
+                }, 1000);
             }
         }
 
