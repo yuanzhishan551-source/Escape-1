@@ -413,7 +413,7 @@
 
         /* 初始文字 */
         .initial-text {
-            font-size: 28px;
+            font-size: 56px;
             color: rgba(220, 220, 220, 0.9);
             margin-bottom: 60px;
             opacity: 0;
@@ -454,10 +454,10 @@
 
         .slot-line-inline .filled-text {
             position: absolute;
-            top: -20px;
+            top: -40px;
             left: 0;
             text-align: left;
-            font-size: 28px;
+            font-size: 56px;
             color: rgba(120, 120, 120, 0.8);
             white-space: nowrap;
         }
@@ -601,7 +601,7 @@
                 padding: 60px 40px;
             }
             .initial-text {
-                font-size: 14px;
+                font-size: 24px;
             }
             .sentence-text {
                 font-size: 24px;
@@ -1708,8 +1708,22 @@
 
         // ============= 结束画面 =============
         function showEnd() {
-            el.endMessage.innerHTML = 'You\'re back home.';
-            el.endScreen.classList.add('visible');
+            // 隐藏所有页面内容
+            el.pagesContainer.style.opacity = '0';
+            el.pagesContainer.style.transition = 'opacity 1s ease';
+
+            // 隐藏SVG选项文字
+            const sceneSvg = document.getElementById('sceneSvg');
+            if (sceneSvg) {
+                sceneSvg.style.opacity = '0';
+                sceneSvg.style.transition = 'opacity 1s ease';
+            }
+
+            // 显示结束画面
+            setTimeout(() => {
+                el.endMessage.innerHTML = 'You\'re back home.';
+                el.endScreen.classList.add('visible');
+            }, 500);
         }
 
         // ============= 辅助 =============
