@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The World of the Blind</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
+            background: #1a1a1a;
+            color: #666;
+            overflow: hidden;
+            cursor: none;
+            perspective: 1200px;
+        }
+
+        /* 3D背景容器 */
+        .space-container {
+            position: fixed;
+            width: 100%;
+            height: 100vh;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            z-index: 0;
+        }
+
+        /* 背景层 - 多种形状 */
+        .shape-layer {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+        }
+
+        .ellipse-1 {
+            background: radial-gradient(ellipse at 30% 60%,
+                rgba(90, 90, 90, 0.35) 0%,
+                rgba(60, 60, 60, 0.25) 25%,
+                rgba(35, 35, 35, 0.18) 50%,
+                transparent 70%);
+            animation: morph1 25s ease-in-out infinite;
+            filter: blur(30px);
+            transform: translateZ(-400px) scale(1.4);
+        }
+
+        .circle-1 {
+            background: radial-gradient(circle at 70% 20%,
+                rgba(75, 75, 75, 0.3) 0%,
+                rgba(50, 50, 50, 0.22) 30%,
+                transparent 60%);
+            animation: float1 20s ease-in-out infinite;
+            filter: blur(25px);
+            transform: translateZ(-300px) scale(1.2);
+        }
+
+        .diagonal-1 {
+            background: linear-gradient(45deg,
+                transparent 0%,
+                rgba(65, 65, 65, 0.25) 20%,
+                rgba(80, 80, 80, 0.35) 40%,
+                rgba(55, 55, 55, 0.2) 60%,
+                transparent 80%);
+            animation: slide1 30s linear infinite;
+            filter: blur(35px);
+            transform: translateZ(-250px) scale(1.3) rotate(15deg);
+        }
+
+        /* 中间层 - 复杂形状 */
+        .mid-shapes {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            top: -25%;
+            left: -25%;
+        }
+
+        .blob-1 {
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            top: 30%;
+            left: 20%;
+            background: radial-gradient(ellipse at center,
+                rgba(35, 35, 35, 0.55) 0%,
+                rgba(45, 45, 45, 0.35) 40%,
+                transparent 70%);
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: blobMorph 15s ease-in-out infinite;
+            filter: blur(20px);
+            transform: translateZ(-100px);
+        }
+
+        .blob-2 {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            top: 40%;
+            right: 10%;
+            background: radial-gradient(circle at 40% 40%,
+                rgba(60, 60, 60, 0.4) 0%,
+                rgba(40, 40, 40, 0.25) 50%,
+                transparent 80%);
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            animation: blobMorph2 18s ease-in-out infinite;
+            filter: blur(25px);
+            transform: translateZ(-50px);
+        }
+
+        .triangle-gradient {
+            position: absolute;
+            width: 0;
+            height: 0;
+            top: 20%;
+            left: 50%;
+            border-left: 200px solid transparent;
+            border-right: 200px solid transparent;
+            border-bottom: 350px solid rgba(70, 70, 70, 0.2);
+            animation: triangleRotate 40s linear infinite;
+            filter: blur(40px);
+            transform: translateZ(-150px);
+            opacity: 0.6;
+        }
+
+        /* 前景层 - 光效 */
+        .light-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .soft-glow {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            background: radial-gradient(circle at 60% 40%,
+                rgba(100, 100, 100, 0.2) 0%,
+                rgba(80, 80, 80, 0.12) 20%,
+                transparent 50%);
+            animation: glowPulse 20s ease-in-out infinite;
+            filter: blur(45px);
+            transform: translateZ(50px);
+        }
+
+        .wandering-orb {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle,
+                rgba(95, 95, 95, 0.25) 0%,
+                rgba(70, 70, 70, 0.15) 40%,
+                transparent 70%);
+            animation: orbWander 35s ease-in-out infinite;
+            filter: blur(30px);
+            border-radius: 50%;
+        }
+
+        /* 网格扭曲效果 */
+        .mesh-distortion {
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            top: -10%;
+            left: -10%;
+            background-image:
+                repeating-linear-gradient(90deg,
+                    transparent,
+                    transparent 50px,
+                    rgba(80, 80, 80, 0.05) 50px,
+                    rgba(80, 80, 80, 0.05) 51px),
+                repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 50px,
+                    rgba(80, 80, 80, 0.05) 50px,
+                    rgba(80, 80, 80, 0.05) 51px);
+            animation: meshWarp 25s ease-in-out infinite;
+            filter: blur(2px);
+            transform: translateZ(-180px) perspective(800px) rotateX(60deg);
+        }
+
+        /* 边缘阴影 */
+        .vignette {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            box-shadow:
+                inset 0 0 100px rgba(0, 0, 0, 0.6),
+                inset 0 0 50px rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 颗粒纹理 */
+        .grain {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .grain::before {
+            content: "";
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background-image:
+                repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(255, 255, 255, 0.05) 2px,
+                    rgba(255, 255, 255, 0.05) 3px);
+            animation: grainMove 0.5s steps(5) infinite;
+        }
+
+        /* 背景动画定义 */
+        @keyframes morph1 {
+            0%, 100% {
+                border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+                transform: translateZ(-400px) scale(1.4) rotate(0deg);
+            }
+            33% {
+                border-radius: 70% 30% 40% 60% / 60% 40% 50% 50%;
+                transform: translateZ(-400px) scale(1.5) rotate(120deg);
+            }
+            66% {
+                border-radius: 30% 70% 60% 40% / 50% 60% 40% 50%;
+                transform: translateZ(-400px) scale(1.3) rotate(240deg);
+            }
+        }
+
+        @keyframes float1 {
+            0%, 100% {
+                transform: translateZ(-300px) scale(1.2) translate(0, 0);
+            }
+            25% {
+                transform: translateZ(-300px) scale(1.3) translate(50px, -30px);
+            }
+            50% {
+                transform: translateZ(-300px) scale(1.1) translate(-30px, 40px);
+            }
+            75% {
+                transform: translateZ(-300px) scale(1.25) translate(20px, -20px);
+            }
+        }
+
+        @keyframes slide1 {
+            0% {
+                transform: translateZ(-250px) scale(1.3) rotate(15deg) translateX(-100%);
+            }
+            100% {
+                transform: translateZ(-250px) scale(1.3) rotate(15deg) translateX(100%);
+            }
+        }
+
+        @keyframes blobMorph {
+            0%, 100% {
+                border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+                transform: translateZ(-100px) scale(1) rotate(0deg);
+            }
+            25% {
+                border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+                transform: translateZ(-100px) scale(1.1) rotate(90deg);
+            }
+            50% {
+                border-radius: 30% 70% 40% 60% / 70% 30% 60% 40%;
+                transform: translateZ(-100px) scale(0.9) rotate(180deg);
+            }
+            75% {
+                border-radius: 60% 40% 30% 70% / 50% 50% 50% 50%;
+                transform: translateZ(-100px) scale(1.05) rotate(270deg);
+            }
+        }
+
+        @keyframes blobMorph2 {
+            0%, 100% {
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                transform: translateZ(-50px) scale(1);
+            }
+            50% {
+                border-radius: 30% 70% 60% 40% / 40% 70% 30% 60%;
+                transform: translateZ(-50px) scale(1.2);
+            }
+        }
+
+        @keyframes triangleRotate {
+            0% {
+                transform: translateZ(-150px) rotate(0deg);
+            }
+            100% {
+                transform: translateZ(-150px) rotate(360deg);
+            }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% {
+                opacity: 0.5;
+                transform: translateZ(50px) scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: translateZ(50px) scale(1.1);
+            }
+        }
+
+        @keyframes orbWander {
+            0%, 100% {
+                top: 20%;
+                left: 10%;
+                transform: scale(1);
+            }
+            25% {
+                top: 60%;
+                left: 70%;
+                transform: scale(1.2);
+            }
+            50% {
+                top: 80%;
+                left: 30%;
+                transform: scale(0.8);
+            }
+            75% {
+                top: 30%;
+                left: 60%;
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes meshWarp {
+            0%, 100% {
+                transform: translateZ(-180px) perspective(800px) rotateX(60deg) scaleY(1);
+            }
+            50% {
+                transform: translateZ(-180px) perspective(800px) rotateX(60deg) scaleY(1.2);
+            }
+        }
+
+        @keyframes grainMove {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(-5px, -5px);
+            }
+        }
+
+        /* 页面容器 */
+        .pages-container {
+            width: 100vw;
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 单个页面 */
+        .page {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: transparent;
+            scroll-snap-align: start;
+            padding: 80px 100px;
+        }
+
+        /* 页面内容容器 */
+        .page-content {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 左对齐（奇数页）*/
+        .page.align-left .initial-text-container {
+            text-align: left;
+            padding-left: 50px;
+        }
+
+        /* 右对齐（偶数页）*/
+        .page.align-right .initial-text-container {
+            text-align: right;
+            padding-right: 50px;
+        }
+
+        /* 初始文字容器 */
+        .initial-text-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* 初始文字 */
+        .initial-text {
+            font-size: 56px;
+            color: rgba(220, 220, 220, 0.9);
+            margin-bottom: 60px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease;
+        }
+
+        .initial-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .initial-text.blurred {
+            filter: blur(6px);
+            opacity: 0.4;
+            transition: all 0.3s ease;
+        }
+
+        .initial-text.blurred.touched {
+            filter: blur(4px);
+            opacity: 0.7;
+        }
+
+        /* 空槽位线 */
+        .slot-line-inline {
+            display: inline-block;
+            width: 400px;
+            height: 2px;
+            background: rgba(180, 180, 180, 0.6);
+            vertical-align: middle;
+            position: relative;
+            margin: 0 20px;
+        }
+
+        .slot-line-inline.filled {
+            background: none;
+        }
+
+        .slot-line-inline .filled-text {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            text-align: left;
+            font-size: 56px;
+            color: rgba(120, 120, 120, 0.8);
+            white-space: nowrap;
+        }
+
+        /* SVG 场景层 - 选项文字 */
+        .scene-svg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* 句子文本 - 使用遮罩只显示触摸圈内的部分 */
+        .sentence-text {
+            fill: rgba(220, 220, 220, 0.9);
+            font-size: 56px;
+            font-family: 'Abhaya Libre', 'Segoe UI', system-ui, serif;
+            cursor: grab;
+            user-select: none;
+            pointer-events: all;
+        }
+
+        .sentence-text.dragging {
+            cursor: grabbing;
+        }
+
+        /* 触摸圈 */
+        .touch-circle {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+
+        .touch-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 3px;
+            height: 3px;
+            background: rgba(200, 200, 200, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px rgba(200, 200, 200, 0.4);
+        }
+
+        /* 手部骨架画布 */
+        #handCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #handCanvas.hint-mode {
+            opacity: 0.3;
+        }
+
+        #handCanvas.tracking-mode {
+            opacity: 0.8;
+        }
+
+        /* 手部指示点 */
+        .finger-pointer {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(200, 200, 200, 0.7);
+            border: 2px solid rgba(220, 220, 220, 0.9);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 150;
+            box-shadow: 0 0 10px rgba(200, 200, 200, 0.6);
+            transition: all 0.05s ease;
+        }
+
+        .finger-pointer.pinching {
+            background: rgba(255, 180, 120, 0.8);
+            border-color: rgba(255, 200, 150, 0.9);
+            box-shadow: 0 0 15px rgba(255, 180, 120, 0.7);
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 摄像头视频 - 隐藏 */
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+
+        /* 结束画面 */
+        .end-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 1s;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        .end-screen.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .end-message {
+            text-align: center;
+            color: rgba(220, 220, 220, 0.9);
+            font-size: 56px;
+            line-height: 1.5;
+            max-width: 800px;
+            padding: 40px;
+            font-weight: 400;
+        }
+
+        @media (max-width: 768px) {
+            .page {
+                padding: 60px 40px;
+            }
+            .initial-text {
+                font-size: 24px;
+            }
+            .sentence-text {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 3D背景 -->
+    <div class="space-container">
+        <!-- 背景形状层 -->
+        <div class="shape-layer ellipse-1"></div>
+        <div class="shape-layer circle-1"></div>
+        <div class="shape-layer diagonal-1"></div>
+
+        <!-- 网格扭曲 -->
+        <div class="mesh-distortion"></div>
+
+        <!-- 中间形状 -->
+        <div class="mid-shapes">
+            <div class="blob-1"></div>
+            <div class="blob-2"></div>
+            <div class="triangle-gradient"></div>
+        </div>
+
+        <!-- 前景光效 -->
+        <div class="light-shapes">
+            <div class="soft-glow"></div>
+            <div class="wandering-orb"></div>
+        </div>
+
+        <!-- 边缘和纹理 -->
+        <div class="vignette"></div>
+        <div class="grain"></div>
+    </div>
+
+    <!-- 页面容器 -->
+    <div class="pages-container" id="pagesContainer">
+        <!-- 页面1: 导航场景 -->
+        <div class="page align-left" id="page1" data-page="1">
+            <div class="page-content">
+                <div class="initial-text-container" id="initialText1">
+                    <!-- 初始文字将通过JavaScript动态添加 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 页面2: 第二个场景 -->
+        <div class="page align-left" id="page2" data-page="2">
+            <div class="page-content">
+                <div class="initial-text-container" id="initialText2">
+                    <!-- 页面2内容 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 页面3: 第三个场景 -->
+        <div class="page align-left" id="page3" data-page="3">
+            <div class="page-content">
+                <div class="initial-text-container" id="initialText3">
+                    <!-- 页面3内容 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全局SVG层用于所有选项文字 -->
+    <svg class="scene-svg" id="sceneSvg">
+        <defs>
+            <radialGradient id="touchGradient">
+                <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                <stop offset="50%" stop-color="white" stop-opacity="0.8"/>
+                <stop offset="80%" stop-color="white" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="white" stop-opacity="0"/>
+            </radialGradient>
+            <mask id="touchMask">
+                <rect width="100%" height="100%" fill="black"/>
+                <circle id="maskCircle" r="120" fill="url(#touchGradient)"/>
+            </mask>
+        </defs>
+        <g id="sentenceLayer" mask="url(#touchMask)"></g>
+    </svg>
+
+    <!-- 触摸圈 -->
+    <div class="touch-circle" id="touchCircle"></div>
+
+    <!-- 手部骨架画布 -->
+    <canvas id="handCanvas" class="hint-mode"></canvas>
+
+    <!-- 摄像头视频（隐藏） -->
+    <video id="video" autoplay playsinline></video>
+
+
+    <!-- 手部指示点 -->
+    <div class="finger-pointer" id="thumbPointer" style="display: none;"></div>
+    <div class="finger-pointer" id="indexPointer" style="display: none;"></div>
+
+    <!-- 结束画面 -->
+    <div class="end-screen" id="endScreen">
+        <div class="end-message" id="endMessage"></div>
+    </div>
+
+    <script>
+        // ============= 页面数据 =============
+        const pagesData = [
+            // 页面1: 导航场景
+            {
+                id: 1,
+                initialTexts: [
+                    { text: 'You are Your Way Home.', tone: 'do', freq: 261.63 },
+                    { text: 'At the next intersection, you should:', tone: 're', freq: 293.66 },
+                    { text: '__SLOT__', tone: 'mi', freq: 329.63, slotId: 'slot1' },
+                    { text: 'The rhythmic tapping of your cane confirms you\'re on the right path.', tone: 'fa', freq: 349.23, showAfterSlot: 'slot1' }
+                ],
+                optionTexts: [
+                    { text: 'Go straight.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Turn Left.', correctSlot: 'slot1', freq: 329.63 },  // mi (correct)
+                    { text: 'Turn Right.', correctSlot: null, freq: 349.23 }  // fa (wrong)
+                ]
+            },
+            // 页面2: 住宅区场景
+            {
+                id: 2,
+                initialTexts: [
+                    { text: 'You enter the residential area.', tone: 're', freq: 293.66 },
+                    { text: 'The traffic noise gradually fades away.', tone: 'mi', freq: 329.63 },
+                    { text: 'Some noisy sounds are heard, you choose:', tone: 'fa', freq: 349.23 },
+                    { text: '__SLOT__', tone: 'sol', freq: 392.00, slotId: 'slot2' },
+                    { text: 'The sound of the wind chimes is getting clearer - you\'re almost home.', tone: 'la', freq: 440.00, showAfterSlot: 'slot2' }
+                ],
+                optionTexts: [
+                    { text: 'Turn toward the barking dog.', correctSlot: null, freq: 261.63 },  // do (wrong)
+                    { text: 'Follow the children\'s voices.', correctSlot: null, freq: 329.63 },  // mi (wrong)
+                    { text: 'Continue on the tactile path.', correctSlot: 'slot2', freq: 392.00 }  // sol (correct)
+                ]
+            },
+            // 页面3: 走廊场景
+            {
+                id: 3,
+                initialTexts: [
+                    { text: 'You reach the hallway.', tone: 'mi', freq: 329.63 },
+                    { text: 'The doors are close together.', tone: 'fa', freq: 349.23 },
+                    { text: 'At this spot, you should:', tone: 'sol', freq: 392.00 },
+                    { text: '__SLOT__', tone: 'la', freq: 440.00, slotId: 'slot3' },
+                    { text: 'A familiar wind-chime sound helps you recognize your own door.', tone: 'xi', freq: 493.88, showAfterSlot: 'slot3' }
+                ],
+                optionTexts: [
+                    { text: 'Go to the left door.', correctSlot: null, freq: 329.63 },  // mi (wrong)
+                    { text: 'Go to the middle door.', correctSlot: 'slot3', freq: 440.00 },  // la (correct)
+                    { text: 'Go to the right door.', correctSlot: null, freq: 261.63 }  // do (wrong)
+                ]
+            }
+        ];
+
+        // ============= 状态 =============
+        const state = {
+            soundOn: true,
+            currentPage: 1,
+            mouseX: window.innerWidth / 2,
+            mouseY: window.innerHeight / 2,
+            dragging: null,
+            dragOffset: { x: 0, y: 0 },
+            // 手势识别相关
+            handDetected: false,
+            hasHandBeenDetected: false,  // 是否曾经检测到过手
+            isPinching: false,
+            pinchPoint: { x: 0, y: 0 },
+            lastPinchState: false,
+            pinchStableFrames: 0,
+            currentTouchedOption: null,  // 当前触摸的选项
+            touchDisabled: false,  // 触控是否被禁用
+            // 页面状态
+            pageStates: {
+                1: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] },
+                2: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] },
+                3: { textIndex: 0, slotsFilled: {}, completed: false, optionElements: [] }
+            }
+        };
+
+        // ============= DOM =============
+        const el = {
+            pagesContainer: document.getElementById('pagesContainer'),
+            touchCircle: document.getElementById('touchCircle'),
+            endScreen: document.getElementById('endScreen'),
+            endMessage: document.getElementById('endMessage'),
+            video: document.getElementById('video'),
+            handCanvas: document.getElementById('handCanvas'),
+            thumbPointer: document.getElementById('thumbPointer'),
+            indexPointer: document.getElementById('indexPointer')
+        };
+
+        // 初始化画布
+        const canvasCtx = el.handCanvas.getContext('2d');
+        el.handCanvas.width = window.innerWidth;
+        el.handCanvas.height = window.innerHeight;
+
+        // ============= 音频 - MP3 音效 =============
+        const Audio = {
+            sounds: {},
+            soundMap: {
+                261.63: '1.C(do).mp3',
+                293.66: '2.D(re).mp3',
+                329.63: '3.E(mi).mp3',
+                349.23: '4.F(fa).mp3',
+                392.00: '5.G(sol).mp3',
+                440.00: '6.A(la).mp3',
+                493.88: '7.B(si).mp3',
+                523.26: '1.C(do).mp3',
+                587.33: '2.D(re).mp3',
+                659.25: '3.E(mi).mp3',
+                698.46: '4.F(fa).mp3',
+                783.99: '5.G(sol).mp3',
+                880.00: '6.A(la).mp3',
+                987.77: '7.B(si).mp3'
+            },
+            init() {
+                this.preloadSounds();
+            },
+            preloadSounds() {
+                const files = [
+                    '1.C(do).mp3',
+                    '2.D(re).mp3',
+                    '3.E(mi).mp3',
+                    '4.F(fa).mp3',
+                    '5.G(sol).mp3',
+                    '6.A(la).mp3',
+                    '7.B(si).mp3'
+                ];
+
+                files.forEach(file => {
+                    const audio = document.createElement('audio');
+                    audio.src = file;
+                    audio.preload = 'auto';
+                    this.sounds[file] = audio;
+                });
+            },
+            playTone(freq) {
+                if (!state.soundOn) return;
+
+                const filename = this.soundMap[freq];
+                if (!filename) {
+                    console.warn('未找到频率对应的音频:', freq);
+                    return;
+                }
+
+                const audio = this.sounds[filename];
+                if (audio) {
+                    const clone = audio.cloneNode();
+                    clone.volume = 0.5;
+                    clone.play().catch(e => console.error('播放音频失败:', e));
+                } else {
+                    console.warn('音频文件未加载:', filename);
+                }
+            },
+            success() {
+                this.playTone(523.26);
+                setTimeout(() => this.playTone(659.25), 150);
+                setTimeout(() => this.playTone(783.99), 300);
+                setTimeout(() => this.playTone(1046.50), 450);
+            },
+            speak(text, callback) {
+                if (!state.soundOn || !window.speechSynthesis) {
+                    if (callback) callback();
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+                utterance.volume = 0.8;
+
+                if (callback) {
+                    utterance.onend = callback;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
+        // ============= 手势识别系统 =============
+        let hands, camera;
+
+        const HAND_CONNECTIONS = [
+            [0, 1], [1, 2], [2, 3], [3, 4],
+            [0, 5], [5, 6], [6, 7], [7, 8],
+            [0, 9], [9, 10], [10, 11], [11, 12],
+            [0, 13], [13, 14], [14, 15], [15, 16],
+            [0, 17], [17, 18], [18, 19], [19, 20],
+            [5, 9], [9, 13], [13, 17]
+        ];
+
+        function drawHand(landmarks, mirrored = true) {
+            canvasCtx.clearRect(0, 0, el.handCanvas.width, el.handCanvas.height);
+
+            if (!landmarks) return;
+
+            canvasCtx.strokeStyle = 'rgba(200, 200, 200, 0.7)';
+            canvasCtx.lineWidth = 2;
+            canvasCtx.lineCap = 'round';
+
+            HAND_CONNECTIONS.forEach(([start, end]) => {
+                const startPoint = landmarks[start];
+                const endPoint = landmarks[end];
+
+                const startX = mirrored ? (1 - startPoint.x) * el.handCanvas.width : startPoint.x * el.handCanvas.width;
+                const startY = startPoint.y * el.handCanvas.height;
+                const endX = mirrored ? (1 - endPoint.x) * el.handCanvas.width : endPoint.x * el.handCanvas.width;
+                const endY = endPoint.y * el.handCanvas.height;
+
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(startX, startY);
+                canvasCtx.lineTo(endX, endY);
+                canvasCtx.stroke();
+            });
+
+            canvasCtx.fillStyle = 'rgba(220, 220, 220, 0.8)';
+            landmarks.forEach((point) => {
+                const x = mirrored ? (1 - point.x) * el.handCanvas.width : point.x * el.handCanvas.width;
+                const y = point.y * el.handCanvas.height;
+
+                canvasCtx.beginPath();
+                canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            });
+        }
+
+        function drawHintHand() {
+            const centerX = 0.75;
+            const centerY = 0.5;
+            const scale = 0.375;
+
+            const hintPose = [
+                { x: centerX, y: centerY + 0.05 * scale },
+                { x: centerX - 0.03 * scale, y: centerY + 0.03 * scale },
+                { x: centerX - 0.05 * scale, y: centerY - 0.02 * scale },
+                { x: centerX - 0.06 * scale, y: centerY - 0.08 * scale },
+                { x: centerX - 0.07 * scale, y: centerY - 0.14 * scale },
+                { x: centerX - 0.01 * scale, y: centerY },
+                { x: centerX - 0.01 * scale, y: centerY - 0.10 * scale },
+                { x: centerX - 0.01 * scale, y: centerY - 0.20 * scale },
+                { x: centerX - 0.01 * scale, y: centerY - 0.30 * scale },
+                { x: centerX + 0.01 * scale, y: centerY },
+                { x: centerX + 0.01 * scale, y: centerY - 0.11 * scale },
+                { x: centerX + 0.01 * scale, y: centerY - 0.22 * scale },
+                { x: centerX + 0.01 * scale, y: centerY - 0.33 * scale },
+                { x: centerX + 0.03 * scale, y: centerY },
+                { x: centerX + 0.03 * scale, y: centerY - 0.10 * scale },
+                { x: centerX + 0.03 * scale, y: centerY - 0.20 * scale },
+                { x: centerX + 0.03 * scale, y: centerY - 0.29 * scale },
+                { x: centerX + 0.05 * scale, y: centerY + 0.01 * scale },
+                { x: centerX + 0.05 * scale, y: centerY - 0.08 * scale },
+                { x: centerX + 0.05 * scale, y: centerY - 0.17 * scale },
+                { x: centerX + 0.05 * scale, y: centerY - 0.25 * scale }
+            ];
+
+            drawHand(hintPose, false);
+        }
+
+        function initHandTracking() {
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandResults);
+
+            camera = new Camera(el.video, {
+                onFrame: async () => {
+                    await hands.send({ image: el.video });
+                },
+                width: 1280,
+                height: 720
+            });
+
+            camera.start();
+        }
+
+        function onHandResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+
+                drawHand(landmarks, true);
+
+                if (!state.handDetected) {
+                    state.handDetected = true;
+                    state.hasHandBeenDetected = true;  // 永久记录曾检测到手
+                    el.handCanvas.classList.remove('hint-mode');
+                    el.handCanvas.classList.add('tracking-mode');
+                }
+
+                const thumbTip = landmarks[4];
+                const indexTip = landmarks[8];
+
+                const thumbX = (1 - thumbTip.x) * window.innerWidth;
+                const thumbY = thumbTip.y * window.innerHeight;
+                const indexX = (1 - indexTip.x) * window.innerWidth;
+                const indexY = indexTip.y * window.innerHeight;
+
+                const pinchX = (thumbX + indexX) / 2;
+                const pinchY = (thumbY + indexY) / 2;
+
+                const distance = Math.sqrt(
+                    Math.pow(thumbX - indexX, 2) +
+                    Math.pow(thumbY - indexY, 2)
+                );
+
+                const isPinchingRaw = distance < 60;
+
+                let isPinching = isPinchingRaw;
+                if (isPinchingRaw) {
+                    state.pinchStableFrames++;
+                    if (state.pinchStableFrames < 2) {
+                        isPinching = state.lastPinchState;
+                    }
+                } else {
+                    state.pinchStableFrames = 0;
+                }
+
+                el.thumbPointer.style.display = 'block';
+                el.thumbPointer.style.left = thumbX + 'px';
+                el.thumbPointer.style.top = thumbY + 'px';
+
+                el.indexPointer.style.display = 'block';
+                el.indexPointer.style.left = indexX + 'px';
+                el.indexPointer.style.top = indexY + 'px';
+
+                if (isPinching) {
+                    el.thumbPointer.classList.add('pinching');
+                    el.indexPointer.classList.add('pinching');
+                } else {
+                    el.thumbPointer.classList.remove('pinching');
+                    el.indexPointer.classList.remove('pinching');
+                }
+
+                updateTouchPosition(indexX, indexY);
+
+                if (isPinching && !state.lastPinchState) {
+                    handlePinchStart(pinchX, pinchY);
+                } else if (isPinching && state.lastPinchState) {
+                    handlePinchMove(pinchX, pinchY);
+                } else if (!isPinching && state.lastPinchState) {
+                    handlePinchEnd(pinchX, pinchY);
+                }
+
+                state.lastPinchState = isPinching;
+                state.isPinching = isPinching;
+                state.pinchPoint = { x: pinchX, y: pinchY };
+
+            } else {
+                if (state.handDetected) {
+                    el.thumbPointer.style.display = 'none';
+                    el.indexPointer.style.display = 'none';
+                    if (state.dragging) {
+                        endDrag({ clientX: state.pinchPoint.x, clientY: state.pinchPoint.y });
+                    }
+                    el.handCanvas.classList.remove('tracking-mode');
+                    // 曾检测到手后不再显示提示手
+                    if (!state.hasHandBeenDetected) {
+                        el.handCanvas.classList.add('hint-mode');
+                        drawHintHand();
+                    }
+                }
+                state.handDetected = false;
+                state.lastPinchState = false;
+                state.pinchStableFrames = 0;
+            }
+        }
+
+        function handlePinchStart(x, y) {
+            const option = findOptionAtPosition(x, y);
+            if (option) {
+                startDrag(x, y);
+            }
+        }
+
+        function handlePinchMove(x, y) {
+            if (!state.dragging) return;
+
+            const newX = x - state.dragOffset.x;
+            const newY = y - state.dragOffset.y;
+
+            state.dragging.x = newX;
+            state.dragging.y = newY;
+
+            const texts = state.dragging.element.querySelectorAll('text');
+            texts.forEach((text, index) => {
+                text.setAttribute('x', newX);
+                text.setAttribute('y', newY + index * 36);
+            });
+        }
+
+        function handlePinchEnd(x, y) {
+            if (!state.dragging) return;
+
+            const slotId = findSlotAtPosition(x, y);
+
+            if (slotId) {
+                placeInSlot(state.dragging, slotId);
+            }
+
+            state.dragging.element.classList.remove('dragging');
+            state.dragging = null;
+        }
+
+        // ============= 初始化页面内容 =============
+        function initPage(pageNum) {
+            const pageData = pagesData[pageNum - 1];
+            const pageState = state.pageStates[pageNum];
+
+            // 立即生成选项文字（不等初始文字播放完）
+            initOptionTexts(pageNum);
+
+            // 开始显示初始文字序列
+            showNextInitialText(pageNum);
+        }
+
+        function showNextInitialText(pageNum) {
+            const pageData = pagesData[pageNum - 1];
+            const pageState = state.pageStates[pageNum];
+            const container = document.getElementById(`initialText${pageNum}`);
+
+            if (pageState.textIndex >= pageData.initialTexts.length) {
+                // 所有初始文字已显示，恢复触控
+                state.touchDisabled = false;
+                return;
+            }
+
+            const textData = pageData.initialTexts[pageState.textIndex];
+
+            // 检查是否需要等待槽位填充
+            if (textData.showAfterSlot) {
+                // 这个文本需要等待槽位填充后才显示，跳过它继续下一个
+                pageState.textIndex++;
+                showNextInitialText(pageNum);
+                return;
+            }
+
+            if (textData.text === '__SLOT__') {
+                // 创建槽位线
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'initial-text visible';
+                slotDiv.innerHTML = `<span class="slot-line-inline" data-slot="${textData.slotId}"></span>`;
+                container.appendChild(slotDiv);
+
+                // 播放音调
+                Audio.playTone(textData.freq);
+
+                // 继续下一个
+                pageState.textIndex++;
+                setTimeout(() => showNextInitialText(pageNum), 1000);
+            } else {
+                // 创建普通文本
+                const textDiv = document.createElement('div');
+                textDiv.className = 'initial-text';
+                textDiv.textContent = textData.text;
+                container.appendChild(textDiv);
+
+                // 显示文本
+                setTimeout(() => {
+                    textDiv.classList.add('visible');
+
+                    // 播放音调
+                    Audio.playTone(textData.freq);
+
+                    // 模糊文本（前两句1.8秒，其他3秒）
+                    const blurDelay = pageState.textIndex < 2 ? 1800 : 3000;
+                    setTimeout(() => {
+                        textDiv.classList.add('blurred');
+
+                        // 继续下一个
+                        pageState.textIndex++;
+                        showNextInitialText(pageNum);
+                    }, blurDelay);
+                }, 100);
+            }
+        }
+
+        function initOptionTexts(pageNum) {
+            const pageData = pagesData[pageNum - 1];
+            const pageState = state.pageStates[pageNum];
+            const svgLayer = document.getElementById('sentenceLayer');
+            const page = document.getElementById(`page${pageNum}`);
+            const rect = page.getBoundingClientRect();
+
+            console.log('=== initOptionTexts DEBUG ===');
+            console.log('pageNum:', pageNum);
+            console.log('svgLayer exists:', !!svgLayer);
+            console.log('page rect:', rect);
+            console.log('currentPage:', state.currentPage);
+
+            // 随机打乱选项
+            const shuffled = [...pageData.optionTexts].sort(() => Math.random() - 0.5);
+
+            // 根据页面对齐方式定义不同的位置
+            let positions;
+            if (page.classList.contains('align-right')) {
+                // 页面2等右对齐页面：选项放在左侧
+                positions = [
+                    { x: window.innerWidth * 0.25, y: window.innerHeight * 0.15 },  // 左上
+                    { x: window.innerWidth * 0.3, y: window.innerHeight * 0.5 },    // 左中
+                    { x: window.innerWidth * 0.35, y: window.innerHeight * 0.85 },  // 左下
+                    { x: window.innerWidth * 0.7, y: window.innerHeight * 0.85 },   // 右下
+                    { x: window.innerWidth * 0.5, y: window.innerHeight * 0.7 },    // 中下
+                ];
+            } else {
+                // 页面1等左对齐页面：选项放在右侧
+                positions = [
+                    { x: window.innerWidth * 0.75, y: window.innerHeight * 0.15 },  // 右上
+                    { x: window.innerWidth * 0.7, y: window.innerHeight * 0.5 },    // 右中
+                    { x: window.innerWidth * 0.65, y: window.innerHeight * 0.85 },  // 右下
+                    { x: window.innerWidth * 0.3, y: window.innerHeight * 0.85 },   // 左下
+                    { x: window.innerWidth * 0.5, y: window.innerHeight * 0.7 },    // 中下
+                ];
+            }
+
+            shuffled.forEach((option, index) => {
+                // 在不同角落放置文字
+                const pos = positions[index % positions.length];
+                const x = pos.x + (Math.random() - 0.5) * 50;  // 加一点随机偏移
+                const y = pos.y + (Math.random() - 0.5) * 50;
+
+                console.log(`Option ${index}: "${option.text}" at (${x}, ${y})`);
+
+                // 创建SVG文本
+                const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                textGroup.dataset.correctSlot = option.correctSlot || '';
+                textGroup.dataset.page = pageNum;  // 标记属于哪个页面
+                textGroup.style.display = pageNum === state.currentPage ? '' : 'none';  // 只显示当前页面
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.classList.add('sentence-text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y);
+                text.textContent = option.text;
+                textGroup.appendChild(text);
+
+                svgLayer.appendChild(textGroup);
+
+                pageState.optionElements.push({
+                    text: option.text,
+                    correctSlot: option.correctSlot,
+                    freq: option.freq,  // 添加频率
+                    x: x,
+                    y: y,
+                    element: textGroup,
+                    placed: false
+                });
+            });
+
+            console.log('Total SVG children:', svgLayer.children.length);
+            console.log('optionElements:', pageState.optionElements.length);
+        }
+
+        // ============= 拖拽处理 =============
+        function startDrag(x, y) {
+            const option = findOptionAtPosition(x, y);
+            if (!option || option.placed) return;
+
+            state.dragging = option;
+            state.dragOffset = {
+                x: x - option.x,
+                y: y - option.y
+            };
+
+            option.element.classList.add('dragging');
+        }
+
+        function endDrag(e) {
+            if (!state.dragging) return;
+
+            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+            const slotId = findSlotAtPosition(clientX, clientY);
+
+            if (slotId) {
+                placeInSlot(state.dragging, slotId);
+            }
+
+            state.dragging.element.classList.remove('dragging');
+            state.dragging = null;
+        }
+
+        function findSlotAtPosition(x, y) {
+            const slots = document.querySelectorAll('.slot-line-inline');
+            for (let slot of slots) {
+                const rect = slot.getBoundingClientRect();
+                // 增大检测范围到60px
+                if (x >= rect.left - 60 && x <= rect.right + 60 &&
+                    y >= rect.top - 60 && y <= rect.bottom + 60) {
+                    return slot.dataset.slot;
+                }
+            }
+            return null;
+        }
+
+        function findOptionAtPosition(x, y) {
+            const pageState = state.pageStates[state.currentPage];
+
+            for (let option of pageState.optionElements) {
+                if (option.placed) continue;
+
+                // 字体56px调整检测范围
+                const estimatedWidth = option.text.length * 36;
+                const estimatedHeight = 72;
+
+                if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
+                    y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        function placeInSlot(option, slotId) {
+            const pageState = state.pageStates[state.currentPage];
+            const pageData = pagesData[state.currentPage - 1];
+
+            // 先填充槽位（无论对错）
+            const slotElement = document.querySelector(`.slot-line-inline[data-slot="${slotId}"]`);
+            let filledText = null;
+
+            if (slotElement) {
+                slotElement.classList.add('filled');
+
+                filledText = document.createElement('div');
+                filledText.className = 'filled-text';
+                filledText.textContent = option.text;
+                slotElement.appendChild(filledText);
+            }
+
+            // 隐藏原选项
+            option.element.style.display = 'none';
+
+            // 检查是否正确
+            if (option.correctSlot !== slotId) {
+                // 错误：禁用触控
+                state.touchDisabled = true;
+
+                const container = document.getElementById(`initialText${state.currentPage}`);
+                const allTexts = container.querySelectorAll('.initial-text');
+
+                let delay = 0;
+                const playInterval = 900;  // 每个音间隔900ms
+
+                // 找到槽位在初始文字数组中的索引
+                const slotIndex = pageData.initialTexts.findIndex(t => t.slotId === slotId);
+                const textsBeforeSlot = slotIndex > 0 ? slotIndex : 2;
+
+                // 播报槽位前的所有初始句子
+                for (let i = 0; i < Math.min(textsBeforeSlot, allTexts.length); i++) {
+                    const textDiv = allTexts[i];
+                    setTimeout(() => {
+                        // 播放音调
+                        if (pageData.initialTexts[i]) {
+                            Audio.playTone(pageData.initialTexts[i].freq);
+                        }
+                        // 亮起文字
+                        textDiv.classList.add('touched');
+                        setTimeout(() => {
+                            textDiv.classList.remove('touched');
+                        }, 400);
+                    }, delay);
+                    delay += playInterval;
+                }
+
+                // 播报填入的错误选项的音调
+                setTimeout(() => {
+                    Audio.playTone(option.freq);
+                    // 亮起填入的文字
+                    if (filledText) {
+                        filledText.style.opacity = '1';
+                        filledText.style.color = 'rgba(200, 200, 200, 0.9)';
+                        setTimeout(() => {
+                            filledText.style.opacity = '';
+                            filledText.style.color = '';
+                        }, 400);
+                    }
+                }, delay);
+                delay += playInterval;
+
+                // 播报完成后，抖动并吐出
+                setTimeout(() => {
+                    if (filledText) {
+                        // 抖动两下
+                        filledText.style.transition = 'transform 0.1s';
+                        filledText.style.transform = 'translateX(10px)';
+                        setTimeout(() => {
+                            filledText.style.transform = 'translateX(-10px)';
+                            setTimeout(() => {
+                                filledText.style.transform = 'translateX(10px)';
+                                setTimeout(() => {
+                                    filledText.style.transform = 'translateX(-10px)';
+                                    setTimeout(() => {
+                                        // 吐出：移除填充的文字
+                                        filledText.remove();
+                                        slotElement.classList.remove('filled');
+
+                                        // 恢复原选项显示
+                                        option.element.style.display = '';
+
+                                        // 恢复触控
+                                        state.touchDisabled = false;
+                                    }, 100);
+                                }, 100);
+                            }, 100);
+                        }, 100);
+                    } else {
+                        state.touchDisabled = false;
+                    }
+                }, delay + 200);
+
+                return;
+            }
+
+            // 正确，标记为已放置
+            option.placed = true;
+            pageState.slotsFilled[slotId] = true;
+
+            // 禁用触控
+            state.touchDisabled = true;
+
+            // 从头播放音节并取消模糊
+            const container = document.getElementById(`initialText${state.currentPage}`);
+            const allTexts = container.querySelectorAll('.initial-text');
+
+            let delay = 0;
+            const playInterval = 900;
+
+            // 找到槽位在初始文字数组中的索引
+            const slotIndex = pageData.initialTexts.findIndex(t => t.slotId === slotId);
+            const textsBeforeSlot = slotIndex > 0 ? slotIndex : 2;
+
+            // 播放槽位前的所有初始句子的音节并取消模糊
+            for (let i = 0; i < Math.min(textsBeforeSlot, allTexts.length); i++) {
+                const textDiv = allTexts[i];
+                setTimeout(() => {
+                    if (pageData.initialTexts[i]) {
+                        Audio.playTone(pageData.initialTexts[i].freq);
+                    }
+                    // 取消模糊
+                    textDiv.classList.remove('blurred');
+                    textDiv.classList.add('touched');
+                    setTimeout(() => {
+                        textDiv.classList.remove('touched');
+                    }, 400);
+                }, delay);
+                delay += playInterval;
+            }
+
+            // 播放第三个音节（槽位/填入的文字）
+            setTimeout(() => {
+                // 找到槽位对应的初始文字数据
+                const slotTextData = pageData.initialTexts.find(t => t.slotId === slotId);
+                if (slotTextData) {
+                    Audio.playTone(slotTextData.freq);
+                }
+                // 亮起填入的文字
+                if (filledText) {
+                    filledText.style.opacity = '1';
+                    filledText.style.color = 'rgba(200, 200, 200, 0.9)';
+                    setTimeout(() => {
+                        filledText.style.opacity = '';
+                        filledText.style.color = '';
+                    }, 400);
+                }
+            }, delay);
+            delay += playInterval;
+
+            // 检查是否有需要显示的后续文本（第四句）
+            const nextText = pageData.initialTexts.find(t => t.showAfterSlot === slotId);
+            if (nextText) {
+                setTimeout(() => {
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'initial-text';
+                    textDiv.textContent = nextText.text;
+                    container.appendChild(textDiv);
+
+                    setTimeout(() => {
+                        textDiv.classList.add('visible');
+                        Audio.playTone(nextText.freq);
+
+                        // 结果句子保持清晰，3秒后检查页面完成
+                        setTimeout(() => {
+                            checkPageCompletion();
+                        }, 3000);
+                    }, 100);
+                }, delay);
+            } else {
+                setTimeout(() => {
+                    checkPageCompletion();
+                }, delay);
+            }
+        }
+
+        function checkPageCompletion() {
+            const pageState = state.pageStates[state.currentPage];
+            const pageData = pagesData[state.currentPage - 1];
+
+            // 检查所有槽位是否已填充
+            const allSlotsFilled = pageData.initialTexts
+                .filter(t => t.slotId)
+                .every(t => pageState.slotsFilled[t.slotId]);
+
+            if (allSlotsFilled && !pageState.completed) {
+                pageState.completed = true;
+
+                // 播放成功音效
+                Audio.success();
+
+                // 等待后自动滚动到下一页
+                setTimeout(() => {
+                    if (state.currentPage < 3) {
+                        scrollToPage(state.currentPage + 1);
+                    } else {
+                        // 所有页面完成，显示结束画面
+                        showEnd();
+                    }
+                }, 2000);
+            }
+        }
+
+        function scrollToPage(pageNum) {
+            const page = document.getElementById(`page${pageNum}`);
+            if (page) {
+                // 临时禁用scroll-snap以实现平滑滚动
+                el.pagesContainer.style.scrollSnapType = 'none';
+
+                // 计算目标位置并平滑滚动
+                const targetY = (pageNum - 1) * window.innerHeight;
+                el.pagesContainer.scrollTo({
+                    top: targetY,
+                    behavior: 'smooth'
+                });
+
+                state.currentPage = pageNum;
+
+                // 显示/隐藏对应页面的选项文字
+                const allOptions = document.querySelectorAll('[data-page]');
+                allOptions.forEach(option => {
+                    option.style.display = option.dataset.page == pageNum ? '' : 'none';
+                });
+
+                // 滚动完成后恢复scroll-snap并初始化新页面
+                setTimeout(() => {
+                    el.pagesContainer.style.scrollSnapType = 'y mandatory';
+                    initPage(pageNum);
+                }, 1000);
+            }
+        }
+
+        // ============= 触摸位置更新 =============
+        function updateTouchPosition(x, y) {
+            state.mouseX = x;
+            state.mouseY = y;
+
+            el.touchCircle.style.left = x + 'px';
+            el.touchCircle.style.top = y + 'px';
+
+            // 更新遮罩圆位置（直接使用viewport坐标）
+            const maskCircle = document.getElementById('maskCircle');
+            if (maskCircle) {
+                maskCircle.setAttribute('cx', x);
+                maskCircle.setAttribute('cy', y);
+                console.log(`Mask circle updated: (${x}, ${y})`);
+            } else {
+                console.error('maskCircle not found!');
+            }
+
+            // 检测触摸的选项文本并播放音调
+            checkOptionTouch(x, y);
+        }
+
+        function checkOptionTouch(x, y) {
+            if (state.dragging || state.isPinching || state.touchDisabled) return;
+
+            let touchedOption = null;
+            const pageState = state.pageStates[state.currentPage];
+
+            // 检测触摸到的选项（字体56px调整）
+            for (let option of pageState.optionElements) {
+                if (option.placed) continue;
+
+                const estimatedWidth = option.text.length * 36;
+                const estimatedHeight = 72;
+
+                if (x >= option.x - estimatedWidth/2 && x <= option.x + estimatedWidth/2 &&
+                    y >= option.y - estimatedHeight/2 && y <= option.y + estimatedHeight/2) {
+                    touchedOption = option;
+                    break;
+                }
+            }
+
+            // 只有当触摸到新选项时才播放音效
+            if (touchedOption && touchedOption !== state.currentTouchedOption) {
+                Audio.playTone(touchedOption.freq);
+                state.currentTouchedOption = touchedOption;
+            } else if (!touchedOption) {
+                // 离开所有选项时，重置
+                state.currentTouchedOption = null;
+            }
+
+            // 检测触摸到的模糊初始文字
+            checkBlurredTextTouch(x, y);
+        }
+
+        // 检测模糊文字触摸
+        function checkBlurredTextTouch(x, y) {
+            if (state.touchDisabled) return;
+
+            const container = document.getElementById(`initialText${state.currentPage}`);
+            if (!container) return;
+
+            const blurredTexts = container.querySelectorAll('.initial-text.blurred');
+            const pageData = pagesData[state.currentPage - 1];
+
+            blurredTexts.forEach((textDiv, index) => {
+                const rect = textDiv.getBoundingClientRect();
+
+                // 计算实际文字宽度（基于字符数和字体大小56px）
+                const textContent = textDiv.textContent || '';
+                const estimatedTextWidth = Math.min(textContent.length * 28, rect.width * 0.8);
+                const textLeft = rect.left;
+                const textRight = rect.left + estimatedTextWidth;
+
+                // 严格检测：只有在文字实际区域内才触发
+                if (x >= textLeft && x <= textRight &&
+                    y >= rect.top && y <= rect.bottom) {
+
+                    // 检查是否已经触摸过这个文字
+                    if (!textDiv.dataset.touched) {
+                        textDiv.dataset.touched = 'true';
+
+                        // 播放对应音调
+                        if (pageData.initialTexts[index]) {
+                            Audio.playTone(pageData.initialTexts[index].freq);
+                        }
+
+                        // 添加亮起效果
+                        textDiv.classList.add('touched');
+                        setTimeout(() => {
+                            textDiv.classList.remove('touched');
+                            textDiv.dataset.touched = '';
+                        }, 500);
+                    }
+                }
+            });
+        }
+
+        // ============= 鼠标/触摸事件 =============
+        function onMouseMove(e) {
+            updateTouchPosition(e.clientX, e.clientY);
+
+            if (state.dragging) {
+                e.preventDefault();
+
+                const newX = e.clientX - state.dragOffset.x;
+                const newY = e.clientY - state.dragOffset.y;
+
+                state.dragging.x = newX;
+                state.dragging.y = newY;
+
+                const texts = state.dragging.element.querySelectorAll('text');
+                texts.forEach((text, index) => {
+                    text.setAttribute('x', newX);
+                    text.setAttribute('y', newY + index * 36);
+                });
+            }
+        }
+
+        function onMouseDown(e) {
+            startDrag(e.clientX, e.clientY);
+        }
+
+        function onTouchMove(e) {
+            if (e.touches.length === 0) return;
+            const touch = e.touches[0];
+
+            updateTouchPosition(touch.clientX, touch.clientY);
+
+            if (state.dragging) {
+                e.preventDefault();
+
+                const newX = touch.clientX - state.dragOffset.x;
+                const newY = touch.clientY - state.dragOffset.y;
+
+                state.dragging.x = newX;
+                state.dragging.y = newY;
+
+                const texts = state.dragging.element.querySelectorAll('text');
+                texts.forEach((text, index) => {
+                    text.setAttribute('x', newX);
+                    text.setAttribute('y', newY + index * 36);
+                });
+            }
+        }
+
+        function onTouchStart(e) {
+            if (e.touches.length > 0) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                startDrag(touch.clientX, touch.clientY);
+            }
+        }
+
+        // ============= 结束画面 =============
+        function showEnd() {
+            // 隐藏所有页面内容
+            el.pagesContainer.style.opacity = '0';
+            el.pagesContainer.style.transition = 'opacity 1s ease';
+
+            // 隐藏SVG选项文字
+            const sceneSvg = document.getElementById('sceneSvg');
+            if (sceneSvg) {
+                sceneSvg.style.opacity = '0';
+                sceneSvg.style.transition = 'opacity 1s ease';
+            }
+
+            // 显示结束画面
+            setTimeout(() => {
+                el.endMessage.innerHTML = 'You\'re back home.';
+                el.endScreen.classList.add('visible');
+            }, 500);
+        }
+
+        // ============= 辅助 =============
+        function toggleSound() {
+            state.soundOn = !state.soundOn;
+        }
+
+        // ============= 初始化 =============
+        function init() {
+            Audio.init();
+
+            // 绘制初始提示手部骨架
+            drawHintHand();
+
+            // 初始化手势识别
+            initHandTracking();
+
+            // 初始化第一页
+            initPage(1);
+
+            // 调试：打印DOM信息
+            setTimeout(() => {
+                const svgLayer = document.getElementById('sentenceLayer');
+                const maskCircle = document.getElementById('maskCircle');
+                console.log('=== POST-INIT DEBUG ===');
+                console.log('sentenceLayer children:', svgLayer ? svgLayer.children.length : 'NOT FOUND');
+                console.log('maskCircle:', maskCircle ? `exists at (${maskCircle.getAttribute('cx')}, ${maskCircle.getAttribute('cy')})` : 'NOT FOUND');
+                console.log('Page 1 optionElements:', state.pageStates[1].optionElements.length);
+                if (svgLayer && svgLayer.children.length > 0) {
+                    console.log('First SVG text element:', svgLayer.children[0]);
+                }
+            }, 1000);
+
+            // 事件监听 - 只支持触摸/手势交互
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchstart', onTouchStart, { passive: false });
+            document.addEventListener('touchend', endDrag);
+
+            window.addEventListener('resize', () => {
+                el.handCanvas.width = window.innerWidth;
+                el.handCanvas.height = window.innerHeight;
+                if (!state.handDetected && !state.hasHandBeenDetected) {
+                    drawHintHand();
+                }
+            });
+
+            updateTouchPosition(state.mouseX, state.mouseY);
+        }
+
+        // ============= 背景动态效果 =============
+        let bgTime = 0;
+        setInterval(() => {
+            bgTime += 0.02;
+
+            const blob1 = document.querySelector('.blob-1');
+            const blob2 = document.querySelector('.blob-2');
+            const glow = document.querySelector('.soft-glow');
+
+            if (blob1) {
+                const blur = 20 + Math.sin(bgTime) * 5;
+                blob1.style.filter = `blur(${blur}px)`;
+            }
+            if (blob2) {
+                const blur = 25 + Math.cos(bgTime * 1.3) * 5;
+                blob2.style.filter = `blur(${blur}px)`;
+            }
+            if (glow) {
+                const opacity = 0.5 + Math.sin(bgTime * 0.7) * 0.3;
+                glow.style.opacity = opacity;
+            }
+        }, 50);
+
+        // ============= 启动 =============
+        init();
+    </script>
+</body>
+</html>
